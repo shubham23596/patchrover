@@ -67,6 +67,83 @@ func TestFeedParsers(t *testing.T) {
 	}
 }
 
+func TestRunOncePersistsSourceHealthAndFirstObservation(t *testing.T) {
+	failing := false
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if failing {
+			http.Error(writer, "temporary upstream failure", http.StatusServiceUnavailable)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`[{"ghsa_id":"GHSA-1","cve_id":null,"summary":"Example","severity":"high","published_at":"2026-10-01T00:00:00Z","html_url":"https://example.com/a"}]`))
+	}))
+	defer server.Close()
+
+	config := validConfig(t.TempDir())
+	config.AllowedHosts = append(config.AllowedHosts, "127.0.0.1")
+	config.Sources = []Source{{ID: "github", Kind: "github-advisories", URL: server.URL}}
+	runner := Runner{FeedClient: FeedClient{HTTP: server.Client()}}
+	if _, err := runner.RunOnce(context.Background(), config); err != nil {
+		t.Fatal(err)
+	}
+	state, err := LoadState(config.StatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(state.Sources) != 1 || state.Sources[0].LastSuccessAt == "" || state.Sources[0].LastError != "" || state.Sources[0].AdvisoryCount != 1 {
+		t.Fatalf("unexpected successful source status: %#v", state.Sources)
+	}
+	if len(state.Advisories) != 1 || state.Advisories[0].ObservedAt == "" {
+		t.Fatalf("first observation was not retained: %#v", state.Advisories)
+	}
+	firstObservedAt := state.Advisories[0].ObservedAt
+	firstSuccessAt := state.Sources[0].LastSuccessAt
+
+	failing = true
+	if _, err := runner.RunOnce(context.Background(), config); err != nil {
+		t.Fatal(err)
+	}
+	state, err = LoadState(config.StatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Sources[0].LastError == "" || state.Sources[0].LastSuccessAt != firstSuccessAt {
+		t.Fatalf("source failure did not preserve the last success: %#v", state.Sources[0])
+	}
+	if len(state.Advisories) != 1 || state.Advisories[0].ObservedAt != firstObservedAt {
+		t.Fatalf("source failure discarded or rewrote advisory history: %#v", state.Advisories)
+	}
+}
+
+func TestRetainNewestAdvisoriesUsesPublishedThenObservedTime(t *testing.T) {
+	items := []Advisory{
+		{ID: "old", Source: "a", PublishedAt: "2026-01-01"},
+		{ID: "new", Source: "a", PublishedAt: "Thu, 22 Oct 2026 10:00:00 GMT"},
+		{ID: "observed", Source: "b", PublishedAt: "not-a-date", ObservedAt: "2026-10-23T10:00:00Z"},
+	}
+	retained := retainNewestAdvisories(items, 2)
+	if len(retained) != 2 || retained[0].ID != "observed" || retained[1].ID != "new" {
+		t.Fatalf("did not retain the newest advisories: %#v", retained)
+	}
+}
+
+func TestActionStatePrunesOnlyReadOnlyObservationsAndFailsClosedAtLimit(t *testing.T) {
+	state := NewState()
+	state.Actions = []Action{{ID: "observation", Status: "observed"}, {ID: "approval", Status: "submitted"}, {ID: "pending", Status: "pending"}}
+	if removed := state.pruneStaleObservedActions(map[string]bool{}); removed != 1 || len(state.Actions) != 2 {
+		t.Fatalf("unexpected action pruning: removed=%d actions=%#v", removed, state.Actions)
+	}
+	for _, action := range state.Actions {
+		if action.Status == "observed" {
+			t.Fatal("read-only observation was not pruned")
+		}
+	}
+	state.Actions = make([]Action, maxStateActions)
+	if added, err := state.addAction(Action{ID: "new"}); err == nil || added {
+		t.Fatalf("action state did not fail closed at its hard limit: added=%t err=%v", added, err)
+	}
+}
+
 func TestAuditTamperingFails(t *testing.T) {
 	state := NewState()
 	state.AppendAudit("test", "", "original")
@@ -196,6 +273,25 @@ func TestCommercialActionsSplitMultiFileChanges(t *testing.T) {
 	bounded := splitCommercialActions([]Action{action})
 	if len(bounded) != 2 || len(bounded[0].Changes) != 1 || len(bounded[1].Changes) != 1 || bounded[0].ID == bounded[1].ID {
 		t.Fatalf("multi-file action was not split into deterministic bounded actions: %#v", bounded)
+	}
+}
+
+func TestAssessTargetReportsSourceToRuntimeDrift(t *testing.T) {
+	root := filepath.Join("..", "..", "packs", "php-2026-rce")
+	fixture := filepath.Join(root, "fixtures", "drift")
+	result, _, err := assessTarget(Target{
+		ID:   "php-runtime",
+		Pack: root,
+		Evidence: collect.Options{
+			RepositoryPath: fixture,
+			KubeSnapshot:   filepath.Join(fixture, "pods.json"),
+		},
+	}, "observe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Verdict != model.VerdictAffected || !result.Drift {
+		t.Fatalf("drift result was not preserved: %#v", result)
 	}
 }
 

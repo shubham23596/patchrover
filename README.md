@@ -62,7 +62,7 @@ Optional proposal explanation is off by default. `--ai-provider ollama --ai-mode
 
 ## Approval-first agent
 
-The self-hosted controller monitors allowlisted CISA KEV, GitHub Advisory, and official RSS/Atom feeds; continuously reassesses explicit targets; and prepares a bounded pull-request or machine-credential-rotation proposal.
+The self-hosted controller monitors allowlisted CISA KEV, GitHub Advisory, and official RSS/Atom feeds; continuously reassesses explicit targets; and prepares a bounded pull-request or machine-credential-rotation proposal. Its durable local status records each source's last attempt, last success, current error, and advisory count. Advisory retention is newest-first, runtime drift is explicit, and action state fails closed at a hard size limit instead of growing without bound.
 
 Use `propose` mode to prepare bounded actions. The open-source binary remains read-only: it does not accept GitHub or Vault write credentials and cannot execute a fix. Commercial customers send the exact action to the team approval inbox; after a person approves it, a signed customer-hosted runner can apply only that action. There is no automatic-approval mode.
 
@@ -94,7 +94,7 @@ Production receipts are in-toto statements wrapped in a DSSE envelope with an em
 
 ## Project status
 
-PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, local proposals, commercial approval submission, advisory feeds, tamper-evident agent state, signed receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, live OCI registry resolution, trusted Sigstore receipt identities, external security review, and production design-partner evidence remain required before a production-readiness claim.
+PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, local proposals, commercial approval submission, persistent advisory-source health, tamper-evident agent state, signed receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, live OCI registry resolution, trusted Sigstore receipt identities, external security review, and production design-partner evidence remain required before a production-readiness claim.
 
 GitHub Pages deploys automatically from `main`. Binary releases remain disabled until the release controls in the launch checklist are complete. The project home is `github.com/shubham23596/patchrover`, with its website served by GitHub Pages at `shubham23596.github.io/patchrover/`.
 
