@@ -30,7 +30,7 @@ patchrover agent run --config <agent.json> [--once]
 patchrover agent status --state <state.json>
 ```
 
-Commercial organizations can configure the same agent to submit bounded proposals to the private team approval inbox. Repository contents and GitHub/Vault credentials remain inside the customer's environment; only an approved action can be leased by the customer-hosted runner.
+Commercial organizations can configure the same agent with a submission-only token to send bounded proposals to the private team approval inbox. Repository contents and GitHub/Vault credentials remain inside the customer's environment. The monitoring token cannot lease or complete fixes; a separate execution-only token belongs to the customer-hosted runner.
 
 `assess` exits with code `2` for `affected`, `3` for `unknown`, and `0` for a fixed or explicitly not-affected result. This makes it safe to use as a CI gate without confusing uncertainty with safety.
 
