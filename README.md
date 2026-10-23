@@ -53,7 +53,7 @@ bin/patchrover propose \
 Optional inputs:
 
 - `--sbom`: CycloneDX JSON or SPDX JSON.
-- `--image`: an OCI image reference; digests are evaluated, while unresolvable tags remain limited evidence.
+- `--image`: an OCI image reference. A supplied digest is evaluated offline. Add `--resolve-image` and repeat `--registry-host` for each exact registry or token-service HTTPS host to resolve a tag to a verified manifest digest. Private registries may use `--registry-token-env` to name an environment variable containing a read-only bearer token.
 - `--evidence`: an explicit PatchRover evidence JSON document.
 - `--kube-context`: invokes only `kubectl --context CONTEXT get pods --all-namespaces -o json`; no exec, patch, apply, or secret API is used.
 - `--kube-snapshot`: an offline pod-list JSON fixture or approved export.
@@ -94,7 +94,7 @@ Production receipts are in-toto statements wrapped in a DSSE envelope with an em
 
 ## Project status
 
-PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, local proposals, commercial approval submission, persistent advisory-source health, tamper-evident agent state, signed receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, live OCI registry resolution, trusted Sigstore receipt identities, external security review, and production design-partner evidence remain required before a production-readiness claim.
+PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, opt-in live OCI manifest resolution, local proposals, commercial approval submission, persistent advisory-source health, tamper-evident agent state, signed receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, platform-specific OCI index selection, trusted Sigstore receipt identities, external security review, and production design-partner evidence remain required before a production-readiness claim.
 
 GitHub Pages deploys automatically from `main`. Binary releases remain disabled until the release controls in the launch checklist are complete. The project home is `github.com/shubham23596/patchrover`, with its website served by GitHub Pages at `shubham23596.github.io/patchrover/`.
 

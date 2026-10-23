@@ -135,18 +135,39 @@ func runAgent(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 }
 
 type evidenceFlags struct {
-	repositoryPath string
-	sbomPath       string
-	imageReference string
-	evidencePath   string
-	kubeContext    string
-	kubeSnapshot   string
+	repositoryPath       string
+	sbomPath             string
+	imageReference       string
+	resolveImage         bool
+	registryAllowedHosts stringListFlag
+	registryTokenEnv     string
+	evidencePath         string
+	kubeContext          string
+	kubeSnapshot         string
+}
+
+type stringListFlag []string
+
+func (values *stringListFlag) String() string {
+	return strings.Join(*values, ",")
+}
+
+func (values *stringListFlag) Set(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return errors.New("value cannot be empty")
+	}
+	*values = append(*values, value)
+	return nil
 }
 
 func addEvidenceFlags(set *flag.FlagSet, values *evidenceFlags) {
 	set.StringVar(&values.repositoryPath, "repo", "", "authorized repository directory")
 	set.StringVar(&values.sbomPath, "sbom", "", "CycloneDX or SPDX JSON document")
 	set.StringVar(&values.imageReference, "image", "", "OCI image reference or digest")
+	set.BoolVar(&values.resolveImage, "resolve-image", false, "resolve an image tag to a verified registry manifest digest")
+	set.Var(&values.registryAllowedHosts, "registry-host", "exact registry or token-service HTTPS host to allow; repeat as needed")
+	set.StringVar(&values.registryTokenEnv, "registry-token-env", "", "environment variable containing a registry bearer token")
 	set.StringVar(&values.evidencePath, "evidence", "", "explicit PatchRover evidence JSON")
 	set.StringVar(&values.kubeContext, "kube-context", "", "explicit read-only kubectl context")
 	set.StringVar(&values.kubeSnapshot, "kube-snapshot", "", "offline Kubernetes PodList JSON")
@@ -154,12 +175,15 @@ func addEvidenceFlags(set *flag.FlagSet, values *evidenceFlags) {
 
 func (values evidenceFlags) options() collect.Options {
 	return collect.Options{
-		RepositoryPath: values.repositoryPath,
-		SBOMPath:       values.sbomPath,
-		ImageReference: values.imageReference,
-		EvidencePath:   values.evidencePath,
-		KubeContext:    values.kubeContext,
-		KubeSnapshot:   values.kubeSnapshot,
+		RepositoryPath:       values.repositoryPath,
+		SBOMPath:             values.sbomPath,
+		ImageReference:       values.imageReference,
+		ResolveImage:         values.resolveImage,
+		RegistryAllowedHosts: append([]string(nil), values.registryAllowedHosts...),
+		RegistryTokenEnv:     values.registryTokenEnv,
+		EvidencePath:         values.evidencePath,
+		KubeContext:          values.kubeContext,
+		KubeSnapshot:         values.kubeSnapshot,
 	}
 }
 
@@ -598,6 +622,9 @@ Evidence flags:
   --repo PATH             authorized repository directory
   --sbom FILE             CycloneDX or SPDX JSON
   --image REF             OCI image reference or digest
+  --resolve-image         Resolve an image tag to a verified manifest digest
+  --registry-host HOST    Exact registry or token-service HTTPS host; repeatable
+  --registry-token-env E  Environment variable containing a registry bearer token
   --evidence FILE         explicit PatchRover evidence JSON
   --kube-context NAME     explicit read-only kubectl context
   --kube-snapshot FILE    offline Kubernetes PodList JSON

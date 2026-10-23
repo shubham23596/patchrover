@@ -66,6 +66,24 @@ func TestMissingEvidenceIsUnknown(t *testing.T) {
 	}
 }
 
+func TestBarePublishedImageDigestIsAffectedWithoutInferringAName(t *testing.T) {
+	responsePack, _, err := pack.LoadFile(filepath.Join("..", "..", "packs", "litellm-1.107.0-compromise"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence, err := collect.ImageReference("sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e", "operator-image", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trail, err := Assess(responsePack, []model.EvidenceRef{evidence})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if trail.Verdict != model.VerdictAffected || len(trail.Findings) != 1 {
+		t.Fatalf("published bare digest did not match safely: %#v", trail)
+	}
+}
+
 func TestContradictoryEvidenceForSameAssetIsUnknown(t *testing.T) {
 	responsePack, _, err := pack.LoadFile(filepath.Join("..", "..", "packs", "php-2026-rce"))
 	if err != nil {

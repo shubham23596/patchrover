@@ -10,6 +10,7 @@ PatchRover automates bounded incident-response work while keeping production dep
 - Packs are untrusted until strict decoding, policy checks, expiry checks, and signature verification succeed.
 - Repositories, SBOMs, image references, evidence files, and Kubernetes metadata are untrusted input.
 - Kubernetes access requires an explicit context. The collector invokes `kubectl` with fixed arguments for pod metadata only.
+- Live OCI tag resolution is opt-in. Registry and token-service hosts require exact HTTPS allowlisting, redirects cannot change hosts, bearer challenges are limited to the exact repository pull scope, and returned manifest bytes must match their digest.
 - Optional AI must use an explicitly configured local or BYOK provider. There is no silent cloud fallback, upload, or model download.
 - Receipt integrity and signer identity are separate claims.
 

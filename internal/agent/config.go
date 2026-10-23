@@ -181,6 +181,19 @@ func (config Config) Validate() error {
 		if target.Evidence.RepositoryPath == "" && target.Evidence.SBOMPath == "" && target.Evidence.ImageReference == "" && target.Evidence.EvidencePath == "" && target.Evidence.KubeContext == "" && target.Evidence.KubeSnapshot == "" {
 			return fmt.Errorf("target %s requires explicit evidence", target.ID)
 		}
+		if target.Evidence.ResolveImage {
+			if target.Evidence.ImageReference == "" {
+				return fmt.Errorf("target %s enables image resolution without an imageReference", target.ID)
+			}
+			if target.Evidence.RegistryTokenEnv != "" && !environmentPattern.MatchString(target.Evidence.RegistryTokenEnv) {
+				return fmt.Errorf("target %s has an invalid registryTokenEnv name", target.ID)
+			}
+			if err := collect.ValidateRegistryResolution(target.Evidence.ImageReference, collect.RegistryOptions{AllowedHosts: target.Evidence.RegistryAllowedHosts, TokenEnv: target.Evidence.RegistryTokenEnv}); err != nil {
+				return fmt.Errorf("target %s registry resolution: %w", target.ID, err)
+			}
+		} else if len(target.Evidence.RegistryAllowedHosts) > 0 || target.Evidence.RegistryTokenEnv != "" {
+			return fmt.Errorf("target %s registry settings require resolveImage", target.ID)
+		}
 		if target.GitHubRepository != "" {
 			if !repositoryPattern.MatchString(target.GitHubRepository) || !branchPattern.MatchString(target.BaseBranch) {
 				return fmt.Errorf("target %s has invalid GitHub repository metadata", target.ID)
