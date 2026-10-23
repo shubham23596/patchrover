@@ -7,6 +7,7 @@ The current release is pre-1.0 and is not a security guarantee.
 
 - A fixed verdict covers only evidence that was supplied and rules present in the selected pack.
 - A receipt does not prove that the wider organization or cluster is secure.
+- A locally created receipt has a self-signed integrity key and remains untrusted until the exact file is signed and verified under an explicit Sigstore identity and issuer policy.
 - The v1 registry signer is device-bound in one company maintainer's macOS Keychain. Independent custody, recovery, rotation rehearsal, and external audit remain incomplete.
 - Kubernetes evidence is currently pod/container metadata; controllers, jobs, rollback history, registries, nodes, and caches require additional operational checks.
 - Live OCI resolution is opt-in and manifest-only. It records the manifest or index digest observed at that moment; it does not download layers, select a platform child from a multi-platform index, or discover registry-attached SBOMs.

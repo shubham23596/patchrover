@@ -7,7 +7,7 @@ PatchRover is a local-first incident-response agent. The open-source binary is r
 
 ## Requirements
 
-- Go 1.27 or later
+- Go 1.27.3 or later
 - macOS or Linux on x86-64 or ARM64
 - `kubectl` only when you explicitly use `--kube-context`
 - A commercial control-plane submission token only when using the team approval inbox

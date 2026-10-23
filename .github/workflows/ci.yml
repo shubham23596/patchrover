@@ -78,6 +78,26 @@ jobs:
         working-directory: site
         run: npm run lighthouse
 
+  vulnerability-scan:
+    name: Reachable Go vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - name: Install pinned govulncheck
+        env:
+          GOBIN: ${{ runner.temp }}/bin
+        run: |
+          mkdir -p "$GOBIN"
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          echo "$GOBIN" >> "$GITHUB_PATH"
+      - name: Reject reachable vulnerabilities
+        run: govulncheck ./...
+
   disposable-cluster:
     name: Disposable OCI + Kubernetes trail
     runs-on: ubuntu-latest

@@ -29,6 +29,13 @@ jobs:
           go test -race ./...
           go run ./cmd/patchrover pack validate packs/php-2026-rce
           go run ./cmd/patchrover pack validate packs/litellm-1.107.0-compromise
+      - name: Reject reachable vulnerabilities
+        env:
+          GOBIN: ${{ runner.temp }}/bin
+        run: |
+          mkdir -p "$GOBIN"
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          "$GOBIN/govulncheck" ./...
       - name: Build release archives
         shell: bash
         env:

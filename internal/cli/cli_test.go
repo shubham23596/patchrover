@@ -83,3 +83,21 @@ func TestWriteFileRejectsSymlinkOutput(t *testing.T) {
 		t.Fatalf("symlink target was modified: %q", data)
 	}
 }
+
+func TestReceiptSigstoreVerificationRequiresCompletePolicy(t *testing.T) {
+	root := t.TempDir()
+	receiptPath := filepath.Join(root, "receipt.json")
+	bundlePath := filepath.Join(root, "receipt.sigstore.json")
+	if err := os.WriteFile(receiptPath, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(bundlePath, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"receipt", "verify", "--sigstore-bundle", bundlePath, receiptPath}, &stdout, &stderr)
+	if code != 1 || !strings.Contains(stderr.String(), "requires --sigstore-bundle, --certificate-identity, and --certificate-oidc-issuer") {
+		t.Fatalf("incomplete Sigstore policy returned code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}

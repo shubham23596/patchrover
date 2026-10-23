@@ -24,7 +24,7 @@ PatchRover is intentionally conservative:
 patchrover assess --pack <pack-directory-or-json> --repo <path> [--sbom <file>] [--image <ref>] [--kube-context <name>]
 patchrover propose --pack <pack-directory-or-json> --trail <trail.json> [explicit AI flags]
 patchrover verify --pack <pack-directory-or-json> --trail <trail.json> [evidence flags]
-patchrover receipt verify <receipt.json>
+patchrover receipt verify [Sigstore flags] <receipt.json>
 patchrover pack validate <pack-directory-or-json>
 patchrover agent run --config <agent.json> [--once]
 patchrover agent status --state <state.json>
@@ -90,11 +90,27 @@ Packs are JSON rather than executable plugins. Unknown fields are rejected, HTTP
 
 Read the [threat model](THREAT_MODEL.md), [security policy](SECURITY.md), [responsible-use policy](RESPONSIBLE_USE.md), and [privacy model](PRIVACY.md) before using PatchRover with real infrastructure.
 
-Production receipts are in-toto statements wrapped in a DSSE envelope with an embedded OpenVEX-compatible status document. The current local signer proves integrity but not an externally trusted identity. Organization-trusted or Sigstore keyless identity verification is a planned pre-beta requirement and is called out clearly in every verification result.
+Production receipts are in-toto statements wrapped in a DSSE envelope with an embedded OpenVEX-compatible status document. The local signer proves integrity but remains explicitly untrusted. For organization trust, sign the exact receipt file with a standard Sigstore v0.3+ bundle and verify it against one exact certificate identity, exact OIDC issuer, certificate-transparency proof, and transparency-log proof. Legacy Sigstore bundles and implicit identity matching are rejected.
+
+```bash
+# Create the receipt with the same exact identity that Fulcio will certify.
+patchrover verify ... --identity '<exact Fulcio certificate identity>'
+
+cosign sign-blob --yes --bundle receipt.sigstore.json patchrover-receipt.json
+
+patchrover receipt verify \
+  --sigstore-bundle receipt.sigstore.json \
+  --certificate-identity '<exact Fulcio certificate identity>' \
+  --certificate-oidc-issuer '<exact OIDC issuer>' \
+  --sigstore-public-good \
+  patchrover-receipt.json
+```
+
+`--sigstore-public-good` is an explicit network opt-in for refreshing the public Sigstore trust root. Use `--sigstore-trusted-root <trusted-root.json>` instead for offline or private Sigstore verification. Keyless signing publishes the signing identity and receipt digest to Sigstore's public transparency service; it does not publish the receipt contents.
 
 ## Project status
 
-PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, opt-in live OCI manifest resolution, local proposals, commercial approval submission, persistent advisory-source health, tamper-evident agent state, signed receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, platform-specific OCI index selection, trusted Sigstore receipt identities, external security review, and production design-partner evidence remain required before a production-readiness claim.
+PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, opt-in live OCI manifest resolution, local proposals, commercial approval submission, persistent advisory-source health, tamper-evident agent state, exact-policy Sigstore receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, an organization signing workflow, platform-specific OCI index selection, external security review, and production design-partner evidence remain required before a production-readiness claim.
 
 GitHub Pages deploys automatically from `main`. Binary releases remain disabled until the release controls in the launch checklist are complete. The project home is `github.com/shubham23596/patchrover`, with its website served by GitHub Pages at `shubham23596.github.io/patchrover/`.
 

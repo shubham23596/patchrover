@@ -35,9 +35,11 @@ Ollama is restricted to loopback. PatchRover never downloads a model. An explici
 
 Re-collects fresh evidence under the same signed pack. A receipt is created only when the trail is `fixed`, runtime evidence is required and present, and an immutable SHA-256 runtime digest can become the in-toto subject.
 
-## `patchrover receipt verify <file>`
+## `patchrover receipt verify [Sigstore flags] <file>`
 
-Validates DSSE integrity and the signed in-toto statement. Integrity and identity trust are reported separately. Locally created receipts use ephemeral self-signed keys by default, so they do not claim externally trusted organizational identity.
+Validates DSSE integrity and the signed in-toto statement. Integrity and identity trust are reported separately. Locally created receipts use ephemeral self-signed keys by default and remain untrusted.
+
+To establish organization trust, first create the receipt with `patchrover verify --identity <exact Fulcio certificate identity>`. Sign the exact receipt file with `cosign sign-blob --bundle`, then pass `--sigstore-bundle`, the same exact `--certificate-identity`, one exact `--certificate-oidc-issuer`, and exactly one trust-root option. `--sigstore-public-good` explicitly allows a public Sigstore TUF refresh; `--sigstore-trusted-root <file>` uses an offline or private trusted root. PatchRover accepts only standard Sigstore v0.3+ bundles and requires certificate-transparency and transparency-log verification.
 
 ## `patchrover pack validate <dir>`
 
