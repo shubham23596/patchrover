@@ -55,8 +55,7 @@ type Target struct {
 }
 
 type Policy struct {
-	AutoActions      []string `json:"autoActions,omitempty"`
-	MaxActionsPerRun int      `json:"maxActionsPerRun"`
+	MaxActionsPerRun int `json:"maxActionsPerRun"`
 }
 
 type Integrations struct {
@@ -129,8 +128,8 @@ func (config Config) Validate() error {
 	if config.APIVersion != ConfigVersion {
 		return fmt.Errorf("unsupported agent apiVersion %q", config.APIVersion)
 	}
-	if config.Mode != "observe" && config.Mode != "propose" && config.Mode != "authorized" {
-		return errors.New("agent mode must be observe, propose, or authorized")
+	if config.Mode != "observe" && config.Mode != "propose" {
+		return errors.New("agent mode must be observe or propose")
 	}
 	duration, err := time.ParseDuration(config.Interval)
 	if err != nil || duration < time.Minute {
@@ -199,11 +198,6 @@ func (config Config) Validate() error {
 			}
 		}
 	}
-	for _, action := range config.Policy.AutoActions {
-		if action != ActionGitHubPullRequest && action != ActionVaultDatabaseRotation {
-			return fmt.Errorf("unsupported automatic action %q", action)
-		}
-	}
 	if config.Integrations.GitHub != nil {
 		if !environmentPattern.MatchString(config.Integrations.GitHub.TokenEnv) {
 			return errors.New("GitHub integration requires a tokenEnv name")
@@ -221,13 +215,4 @@ func (config Config) Validate() error {
 		}
 	}
 	return nil
-}
-
-func contains(values []string, wanted string) bool {
-	for _, value := range values {
-		if value == wanted {
-			return true
-		}
-	}
-	return false
 }

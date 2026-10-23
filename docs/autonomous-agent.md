@@ -8,9 +8,10 @@ It does **not** change employee passwords, browse arbitrary news pages, execute 
 
 - `observe` records affected targets and suggested actions without making an approval queue.
 - `propose` creates pending actions. An operator approves an exact action ID, and the next run executes it.
-- `authorized` automatically executes only action types listed in `policy.autoActions`, up to `maxActionsPerRun`. Other actions remain pending.
 
-Missing or conflicting evidence stays `unknown`. News without a signed Response Pack is recorded as advisory intelligence; it cannot produce a safe verdict or automatic fix.
+There is no automatic-approval mode. Every write action requires an exact recorded approval.
+
+Missing or conflicting evidence stays `unknown`. News without a signed Response Pack is recorded as advisory intelligence; it cannot produce a safe verdict or proposed fix.
 
 ## Start safely
 
@@ -22,15 +23,14 @@ export PATCHROVER_VAULT_TOKEN='a narrowly scoped token for database/rotate-root 
 
 patchrover agent run --config examples/agent.propose.json --once
 patchrover agent status --state .patchrover/agent-state.json
-patchrover agent approve --state .patchrover/agent-state.json --action ACTION_ID
-patchrover agent run --config examples/agent.propose.json --once
+patchrover agent review --config examples/agent.propose.json --action ACTION_ID
 ```
 
-Token values are read from the named environment variables and are never written to configuration or state. The state file is owner-readable and contains a hash-chained audit log. Any edit to an existing audit entry causes loading to fail.
+The review command shows the exact action and asks the operator to type `yes`. Any other answer cancels. Approval is written to the hash-chained audit log before that one action runs. Token values are read from the named environment variables and are never written to configuration or state. Any edit to an existing audit entry causes loading to fail.
 
 ## Advisory sources
 
-The alpha supports:
+The current release supports:
 
 - CISA Known Exploited Vulnerabilities JSON;
 - GitHub Global Security Advisories JSON;
@@ -44,7 +44,7 @@ PatchRover reads a specific file from the target repository and confirms its SHA
 
 ## Machine credential safety
 
-The only alpha credential action is HashiCorp Vault's database root rotation endpoint for exact resource names declared on the target. This covers a managed service credential, not a person's password. Adding another provider requires a typed integration and tests; a generic password-changing or command-running adapter is prohibited.
+The only credential action is HashiCorp Vault's database root rotation endpoint for exact resource names declared on the target. This covers a managed service credential, not a person's password. Adding another provider requires a typed integration and tests; a generic password-changing or command-running adapter is prohibited.
 
 ## Deployment model
 

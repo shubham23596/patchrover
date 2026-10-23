@@ -29,13 +29,13 @@
 | Kubernetes privilege abuse | Explicit context, fixed `kubectl get pods` arguments, request timeout, no Secrets, no exec, no mutation. |
 | Receipt leaks infrastructure names | Stable salted redaction by default; source paths and cluster/workload identifiers are excluded. |
 | Receipt tampering | DSSE signature verification and subject digest checks. |
-| Self-signed receipt mistaken for trusted identity | Verifier reports integrity and identity trust separately; alpha receipts are explicitly untrusted-self-signed. |
+| Self-signed receipt mistaken for trusted identity | Verifier reports integrity and identity trust separately; locally signed receipts are explicitly untrusted-self-signed. |
 | Compromised GitHub workflow | Minimal permissions, pinned action SHAs, Dependabot, CodeQL, repository-enforced protected releases, and signed provenance. |
 | Advisory feed injects instructions | HTTPS and exact-host allowlists, size limits, structured parsers, no execution, and no verdict without a signed Response Pack. |
 | Agent overwrites a developer change | The remote file must match the SHA-256 observed during assessment; replacements are line-specific and fail closed. |
 | Stolen integration token broadens access | Tokens stay in environment variables; operators must use provider-side least privilege; no token is persisted to state. |
 | Approval or audit record is altered | State uses strict decoding and a hash-chained audit log; existing-entry tampering prevents the agent from loading. |
-| Credential automation changes a human password | No human-password capability exists. Alpha supports only exact, allowlisted Vault database root rotations. |
+| Credential automation changes a human password | No human-password capability exists. The current release supports only exact, allowlisted Vault database root rotations. |
 
 ## Residual risks
 

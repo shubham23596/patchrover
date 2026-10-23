@@ -1,35 +1,29 @@
 ---
 title: Getting started
-description: Build PatchRover locally and run the safe, account-free demo.
+description: Build PatchRover, assess an approved target, and review a proposed fix.
 ---
 
-PatchRover is a local-first incident-response evidence tool. Collection is read-only. The optional self-hosted agent can open a bounded pull request or rotate an exact allowlisted Vault database credential under policy, but it never merges, deploys, changes workloads, or changes human passwords.
+PatchRover is a local-first incident-response agent. Collection is read-only. In `propose` mode, it finds a supported issue, prepares one exact action, asks for human approval, and only then opens a bounded pull request or rotates an allowlisted Vault database credential. It never merges, deploys, changes workloads, or changes human passwords.
 
 ## Requirements
 
 - Go 1.27 or later
 - macOS or Linux on x86-64 or ARM64
 - `kubectl` only when you explicitly use `--kube-context`
+- A narrowly scoped GitHub or Vault token only when you approve a real action
 
-No account, model, API key, container runtime, or network request is needed for the demo.
-
-## Run the deterministic demo
+## Build PatchRover
 
 From a PatchRover checkout:
 
 ```sh
-go run ./cmd/patchrover demo
-go run ./cmd/patchrover agent demo
+make build
 ```
 
-The demo creates temporary synthetic source and Kubernetes metadata, validates a signed response pack, produces an affected trail, drafts a local remediation proposal, verifies fixed evidence, and independently checks a signed receipt. Temporary files are removed at the end.
-
-The agent demo separately exercises advisory correlation, deterministic assessment, and the stale-content-protected remediation path without contacting GitHub or Vault.
-
-## Assess a synthetic fixture
+## Run a first assessment
 
 ```sh
-go run ./cmd/patchrover assess \
+bin/patchrover assess \
   --pack packs/php-2026-rce \
   --repo packs/php-2026-rce/fixtures/affected \
   --kube-snapshot packs/php-2026-rce/fixtures/affected/pods.json \
@@ -37,6 +31,18 @@ go run ./cmd/patchrover assess \
 ```
 
 An affected assessment exits with status `2`; an unknown assessment exits with `3`. This lets CI distinguish a deterministic finding from an operational error.
+
+## Ask for approval before fixing
+
+Copy `examples/agent.propose.json` and replace its example paths, repository, and provider endpoints with resources you are authorized to use. Keep `mode` set to `propose`.
+
+```sh
+bin/patchrover agent run --config examples/agent.propose.json --once
+bin/patchrover agent status --state .patchrover/agent-state.json
+bin/patchrover agent review --config examples/agent.propose.json --action ACTION_ID
+```
+
+The review command shows the exact action and asks `Apply this exact fix? Type yes to approve:`. Any other answer cancels without changing the approval state. A successful approval is written to the audit chain before PatchRover applies that one action.
 
 ## Review before real use
 

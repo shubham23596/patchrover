@@ -92,7 +92,7 @@ func CreateWithKey(responsePack model.ResponsePack, trail model.Trail, identity 
 			Evidence: receiptEvidence,
 			Limitations: []string{
 				"This receipt proves integrity of the included observation, not that the entire environment is secure.",
-				"The embedded alpha signing key is self-signed; identity trust requires an external organizational or Sigstore policy.",
+				"The embedded signing key is self-signed; identity trust requires an external organizational or Sigstore policy.",
 				"Repository, cluster, namespace, workload, and pod identifiers are redacted by default.",
 			},
 		},

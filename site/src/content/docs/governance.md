@@ -3,7 +3,7 @@ title: Governance
 description: Ownership, contribution, release, and safety governance for PatchRover.
 ---
 
-The alpha public home is `github.com/shubham23596/patchrover`, visibly attributing founder and lead maintainer Shubham Jain. The Singapore operating company controls the project IP, release identity, future domain, and commercial service. The repository can move to a company organization later without changing the Apache-2.0 license.
+The public home is `github.com/shubham23596/patchrover`, visibly attributing founder and lead maintainer Shubham Jain. The Singapore operating company controls the project IP, release identity, future domain, and commercial service. The repository can move to a company organization later without changing the Apache-2.0 license.
 
 Before a stable production release, the project must have:
 

@@ -29,4 +29,4 @@ The project is Apache-2.0, local-first, and designed to fail closed when evidenc
 
 I’m looking for cloud-native SaaS design partners willing to test PatchRover on authorized repositories and read-only runtime metadata. Please use the project’s GitHub Discussions or security policy for the appropriate channel once the repository is public.
 
-> PatchRover is a working alpha, not a guarantee that any system is secure.
+> PatchRover is a pre-1.0 security product, not a guarantee that any system is secure.

@@ -13,7 +13,7 @@ Run:
 
 ```bash
 make verify
-make build packs demo
+make build packs
 cd site && npm ci && npm run check && npm run build
 ```
 

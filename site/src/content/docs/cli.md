@@ -3,10 +3,6 @@ title: CLI reference
 description: PatchRover commands, evidence inputs, outputs, and exit codes.
 ---
 
-## `patchrover demo`
-
-Runs a deterministic end-to-end demonstration with temporary synthetic fixtures. It uses no network, model, account, vulnerable package, or production access.
-
 ## `patchrover assess --pack <ref>`
 
 Validates a signed response pack, collects evidence, and writes a `Trail` JSON document. Supply at least one evidence source:
@@ -36,7 +32,7 @@ Re-collects fresh evidence under the same signed pack. A receipt is created only
 
 ## `patchrover receipt verify <file>`
 
-Validates DSSE integrity and the signed in-toto statement. Integrity and identity trust are reported separately. Alpha receipts use ephemeral self-signed keys by default, so they do not claim externally trusted organizational identity.
+Validates DSSE integrity and the signed in-toto statement. Integrity and identity trust are reported separately. Locally created receipts use ephemeral self-signed keys by default, so they do not claim externally trusted organizational identity.
 
 ## `patchrover pack validate <dir>`
 
@@ -44,12 +40,11 @@ Validates schema, expiry, review state, source URLs, deterministic matcher rules
 
 ## `patchrover agent`
 
-- `agent demo` runs the offline autonomous-decision and bounded-edit demonstration.
-- `agent run --config <file> [--once]` monitors sources and targets, then queues or executes policy-authorized actions.
+- `agent run --config <file> [--once]` monitors sources and targets, then queues proposed actions or executes actions that already have a recorded approval.
 - `agent status --state <file>` reports target verdicts and action states.
-- `agent approve --state <file> --action <id>` records human approval for one exact pending action.
+- `agent review --config <file> --action <id>` shows one exact proposed change, requires the operator to type `yes`, records approval, and applies only that action.
 
-The agent supports `observe`, `propose`, and `authorized` modes. Its only alpha write capabilities are GitHub pull requests and exact HashiCorp Vault database root rotations; it has no human-password, merge, deployment, or arbitrary-shell action.
+The agent supports `observe` and `propose` modes. Every write action requires an exact recorded approval. Its only write capabilities are GitHub pull requests and exact HashiCorp Vault database root rotations; it has no human-password, merge, deployment, or arbitrary-shell action.
 
 ## Exit codes
 

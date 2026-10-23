@@ -1,15 +1,15 @@
 ---
 title: Limitations
-description: What the PatchRover alpha does not prove or automate.
+description: What the current PatchRover release does not prove or automate.
 ---
 
-The current release is a working alpha, not a security guarantee.
+The current release is pre-1.0 and is not a security guarantee.
 
 - A fixed verdict covers only evidence that was supplied and rules present in the selected pack.
 - A receipt does not prove that the wider organization or cluster is secure.
 - The v1 registry signer is device-bound in one company maintainer's macOS Keychain. Independent custody, recovery, rotation rehearsal, and external audit remain incomplete.
 - Kubernetes evidence is currently pod/container metadata; controllers, jobs, rollback history, registries, nodes, and caches require additional operational checks.
-- OCI references are inspected as provided. The alpha does not fetch registry manifests or layers.
+- OCI references are inspected as provided. The current release does not fetch registry manifests or layers.
 - The current collectors cover a narrow set of dependency files and SBOM formats.
 - Autonomous repository fixes are line-specific dependency replacements and stop at a pull request; PatchRover does not merge or deploy them.
 - Credential automation supports exact HashiCorp Vault database root rotations only. It does not change human passwords or cover every secrets provider.

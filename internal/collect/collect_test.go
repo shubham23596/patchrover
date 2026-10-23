@@ -23,7 +23,7 @@ func TestPythonLockEvidenceUsesVersionLine(t *testing.T) {
 }
 
 func TestKubernetesSnapshotWithoutImmutableDigestStaysExplicit(t *testing.T) {
-	document := []byte(`{"items":[{"metadata":{"namespace":"demo","name":"app"},"spec":{"containers":[{"name":"app","image":"php:8.4.27-apache"}]}}]}`)
+	document := []byte(`{"items":[{"metadata":{"namespace":"sample","name":"app"},"spec":{"containers":[{"name":"app","image":"php:8.4.27-apache"}]}}]}`)
 	evidence, err := KubernetesSnapshot(document, "test")
 	if err != nil {
 		t.Fatal(err)

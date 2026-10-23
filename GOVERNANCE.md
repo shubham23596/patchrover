@@ -1,6 +1,6 @@
 # Governance
 
-PatchRover uses a maintainer-led open-source model during its alpha stage.
+PatchRover uses a maintainer-led open-source model during its pre-1.0 stage.
 
 ## Roles
 
@@ -17,9 +17,9 @@ PatchRover uses a maintainer-led open-source model during its alpha stage.
 
 ## Independence and continuity
 
-The alpha repository is published from founder Shubham Jain's `shubham23596` GitHub account, with contributions attributed to their authors. The Singapore operating company controls the project IP, release identity, future domain, and commercial infrastructure. Before a stable production release, add at least one additional trusted repository administrator using secure 2FA so continuity does not depend on one account.
+The repository is published from founder Shubham Jain's `shubham23596` GitHub account, with contributions attributed to their authors. The Singapore operating company controls the project IP, release identity, future domain, and commercial infrastructure. Before a stable production release, add at least one additional trusted repository administrator using secure 2FA so continuity does not depend on one account.
 
 ## Changes to governance
 
-Material governance changes require a public proposal and a recorded maintainer decision. A foundation is not planned during alpha; it may be reconsidered only after meaningful independent adoption.
+Material governance changes require a public proposal and a recorded maintainer decision. A foundation is not planned during the pre-1.0 stage; it may be reconsidered only after meaningful independent adoption.
 

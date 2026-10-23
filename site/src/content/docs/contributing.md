@@ -17,7 +17,7 @@ PatchRover accepts code, documentation, and public post-disclosure response-pack
 
 ```bash
 make verify
-make build packs demo
+make build packs
 cd site && npm ci && npm run build
 ```
 

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -18,7 +19,6 @@ import (
 	"github.com/shubham23596/patchrover/internal/agent"
 	"github.com/shubham23596/patchrover/internal/ai"
 	"github.com/shubham23596/patchrover/internal/collect"
-	"github.com/shubham23596/patchrover/internal/demo"
 	"github.com/shubham23596/patchrover/internal/engine"
 	"github.com/shubham23596/patchrover/internal/model"
 	"github.com/shubham23596/patchrover/internal/pack"
@@ -26,9 +26,13 @@ import (
 	"github.com/shubham23596/patchrover/internal/receipt"
 )
 
-var Version = "0.1.0-alpha.1"
+var Version = "0.1.0"
 
 func Run(args []string, stdout, stderr io.Writer) int {
+	return RunWithInput(args, os.Stdin, stdout, stderr)
+}
+
+func RunWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		printHelp(stdout)
 		return 0
@@ -39,12 +43,6 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "version", "--version":
 		fmt.Fprintln(stdout, Version)
-		return 0
-	case "demo":
-		if err := demo.Run(stdout); err != nil {
-			fmt.Fprintln(stderr, "demo failed:", err)
-			return 1
-		}
 		return 0
 	case "assess":
 		return runAssess(args[1:], stdout, stderr)
@@ -57,7 +55,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	case "pack":
 		return runPack(args[1:], stdout, stderr)
 	case "agent":
-		return runAgent(args[1:], stdout, stderr)
+		return runAgent(args[1:], stdin, stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
 		printHelp(stderr)
@@ -65,16 +63,9 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func runAgent(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 1 && args[0] == "demo" {
-		if err := agent.Demo(stdout); err != nil {
-			fmt.Fprintln(stderr, "agent demo failed:", err)
-			return 1
-		}
-		return 0
-	}
+func runAgent(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: patchrover agent run|status|approve")
+		fmt.Fprintln(stderr, "usage: patchrover agent run|status|review")
 		return 1
 	}
 	switch args[0] {
@@ -121,27 +112,91 @@ func runAgent(args []string, stdout, stderr io.Writer) int {
 		}
 		for _, action := range state.Actions {
 			fmt.Fprintf(stdout, "ACTION %s type=%s status=%s target=%s\n", action.ID, action.Type, action.Status, action.TargetID)
+			if action.Status == "pending" || action.Status == "failed" {
+				fmt.Fprintf(stdout, "REVIEW patchrover agent review --config CONFIG --action %s\n", action.ID)
+			}
 		}
 		return 0
-	case "approve":
-		set := flag.NewFlagSet("agent approve", flag.ContinueOnError)
+	case "review":
+		set := flag.NewFlagSet("agent review", flag.ContinueOnError)
 		set.SetOutput(stderr)
-		statePath := set.String("state", "", "agent state JSON")
-		actionID := set.String("action", "", "action ID")
-		if err := set.Parse(args[1:]); err != nil || *statePath == "" || *actionID == "" {
-			fmt.Fprintln(stderr, "agent approve requires --state and --action")
+		configPath := set.String("config", "", "agent JSON configuration")
+		actionID := set.String("action", "", "exact pending action ID")
+		if err := set.Parse(args[1:]); err != nil || *configPath == "" || *actionID == "" {
+			fmt.Fprintln(stderr, "agent review requires --config and --action")
 			return 1
 		}
-		if err := agent.Approve(*statePath, *actionID); err != nil {
+		config, err := agent.LoadConfig(*configPath)
+		if err != nil {
+			fmt.Fprintln(stderr, "load agent config:", err)
+			return 1
+		}
+		state, err := agent.LoadState(config.StatePath)
+		if err != nil {
+			fmt.Fprintln(stderr, "load agent state:", err)
+			return 1
+		}
+		action, ok := findAction(state.Actions, *actionID)
+		if !ok {
+			fmt.Fprintln(stderr, "review action: action was not found")
+			return 1
+		}
+		if action.Status != "pending" && action.Status != "failed" {
+			fmt.Fprintf(stderr, "review action: action cannot be reviewed from status %s\n", action.Status)
+			return 1
+		}
+		printActionReview(stdout, action)
+		fmt.Fprint(stdout, "Apply this exact fix? Type yes to approve: ")
+		answer, readErr := bufio.NewReader(stdin).ReadString('\n')
+		if readErr != nil && !errors.Is(readErr, io.EOF) {
+			fmt.Fprintln(stderr, "read approval:", readErr)
+			return 1
+		}
+		if strings.TrimSpace(answer) != "yes" {
+			fmt.Fprintln(stdout, "CANCELLED no change was approved or applied")
+			return 0
+		}
+		if err := agent.Approve(config.StatePath, action.ID); err != nil {
 			fmt.Fprintln(stderr, "approve action:", err)
 			return 1
 		}
-		fmt.Fprintln(stdout, "APPROVED", *actionID)
+		resultURL, err := agent.ApplyApproved(context.Background(), config, action.ID)
+		if err != nil {
+			fmt.Fprintln(stderr, "apply approved action:", err)
+			return 1
+		}
+		fmt.Fprintln(stdout, "COMPLETED", action.ID)
+		if resultURL != "" {
+			fmt.Fprintln(stdout, "RESULT", resultURL)
+		}
 		return 0
 	default:
-		fmt.Fprintln(stderr, "usage: patchrover agent run|status|approve|demo")
+		fmt.Fprintln(stderr, "usage: patchrover agent run|status|review")
 		return 1
 	}
+}
+
+func findAction(actions []agent.Action, id string) (agent.Action, bool) {
+	for _, action := range actions {
+		if action.ID == id {
+			return action, true
+		}
+	}
+	return agent.Action{}, false
+}
+
+func printActionReview(output io.Writer, action agent.Action) {
+	fmt.Fprintf(output, "\nFIX REQUIRES APPROVAL\nACTION %s\nTYPE   %s\nTARGET %s\nPACK   %s\n", action.ID, action.Type, action.TargetID, action.PackID)
+	switch action.Type {
+	case agent.ActionGitHubPullRequest:
+		fmt.Fprintf(output, "REPOSITORY %s\nBASE       %s\n", action.Repository, action.BaseBranch)
+		for _, change := range action.Changes {
+			fmt.Fprintf(output, "CHANGE     %s: %s -> %s\n", change.Path, change.OldVersion, change.NewVersion)
+		}
+	case agent.ActionVaultDatabaseRotation:
+		fmt.Fprintf(output, "MACHINE CREDENTIAL %s\n", action.VaultDatabase)
+	}
+	fmt.Fprintln(output, "PatchRover will apply only this action. It will not merge or deploy the result.")
 }
 
 type evidenceFlags struct {
@@ -371,7 +426,7 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "RECEIPT  %s\n", *receiptPath)
 	fmt.Fprintf(stdout, "INTEGRITY %t\n", verification.IntegrityValid)
 	fmt.Fprintf(stdout, "IDENTITY  trusted=%t (%s)\n", verification.IdentityTrusted, verification.Identity)
-	fmt.Fprintln(stdout, "WARNING   Self-signed alpha identity is not an external organizational trust proof.")
+	fmt.Fprintln(stdout, "WARNING   A self-signed identity is not an external organizational trust proof.")
 	return 0
 }
 
@@ -595,16 +650,14 @@ func printHelp(output io.Writer) {
 	fmt.Fprintln(output, `PatchRover — Track. Fix. Prove.
 
 Usage:
-  patchrover demo
   patchrover assess --pack PACK --repo REPOSITORY [evidence flags]
   patchrover propose --pack PACK --trail TRAIL [--repo REPOSITORY]
   patchrover verify --pack PACK --trail TRAIL [fresh evidence flags]
   patchrover receipt verify RECEIPT
   patchrover pack validate PACK
-  patchrover agent demo
   patchrover agent run --config agent.json [--once]
   patchrover agent status --state state.json
-  patchrover agent approve --state state.json --action ACTION_ID
+  patchrover agent review --config agent.json --action ACTION_ID
   patchrover version
 
 Evidence flags:
@@ -615,7 +668,7 @@ Evidence flags:
   --kube-context NAME     explicit read-only kubectl context
   --kube-snapshot FILE    offline Kubernetes PodList JSON
 
-Agent modes are observe, propose, and authorized. Authorized mode only runs exact allowlisted
-GitHub pull-request or Vault machine-credential actions. PatchRover never changes human passwords,
-never treats missing evidence as safe, and never deploys production workloads.`)
+Use propose mode to require an interactive review before each fix. The review command shows the
+exact change and applies it only after the operator types yes. PatchRover never changes human
+passwords, never treats missing evidence as safe, never auto-approves, and never deploys production workloads.`)
 }

@@ -1,4 +1,4 @@
-.PHONY: build test verify demo packs site-install site-check site-build site-audit
+.PHONY: build test verify packs site-install site-check site-build site-audit
 
 build:
 	go build -trimpath -o bin/patchrover ./cmd/patchrover
@@ -10,9 +10,6 @@ verify:
 	test -z "$$(gofmt -l .)"
 	go vet ./...
 	go test -race ./...
-
-demo: build
-	./bin/patchrover demo
 
 packs: build
 	./bin/patchrover pack validate packs/php-2026-rce

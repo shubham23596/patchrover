@@ -36,7 +36,6 @@
     }
   ],
   "policy": {
-    "autoActions": [],
     "maxActionsPerRun": 2
   },
   "integrations": {

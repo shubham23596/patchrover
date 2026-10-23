@@ -248,7 +248,7 @@ func summarize(verdict model.Verdict, drift, contradictory bool, findings []mode
 	case model.VerdictFixed:
 		return "Every relevant observed artifact matched an explicit fixed rule. This does not prove the wider environment is secure."
 	case model.VerdictNotAffected:
-		return "Explicit absence evidence satisfied the response pack. This alpha does not infer absence automatically."
+		return "Explicit absence evidence satisfied the response pack. PatchRover does not infer absence automatically."
 	default:
 		if len(findings) == 0 {
 			return "No decisive artifact evidence was found. PatchRover will not infer safety from missing data."

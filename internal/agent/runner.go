@@ -22,8 +22,6 @@ type RunReport struct {
 	SourceErrors   int
 	TargetsChecked int
 	ActionsCreated int
-	ActionsRun     int
-	ActionsFailed  int
 }
 
 type Runner struct {
@@ -38,7 +36,7 @@ func (runner Runner) Run(ctx context.Context, config Config, once bool) error {
 			return err
 		}
 		if runner.Output != nil {
-			fmt.Fprintf(runner.Output, "AGENT sources=%d source_errors=%d targets=%d actions_created=%d actions_run=%d actions_failed=%d\n", report.SourcesChecked, report.SourceErrors, report.TargetsChecked, report.ActionsCreated, report.ActionsRun, report.ActionsFailed)
+			fmt.Fprintf(runner.Output, "AGENT sources=%d source_errors=%d targets=%d actions_created=%d\n", report.SourcesChecked, report.SourceErrors, report.TargetsChecked, report.ActionsCreated)
 		}
 		if once {
 			return nil
@@ -104,8 +102,9 @@ func (runner Runner) RunOnce(ctx context.Context, config Config) (RunReport, err
 		}
 		results = append(results, result)
 		for _, action := range actions {
-			if config.Mode == "authorized" && contains(config.Policy.AutoActions, action.Type) {
-				action.Status = "approved"
+			if report.ActionsCreated >= config.Policy.MaxActionsPerRun {
+				state.AppendAudit("action_limit", "", fmt.Sprintf("deferred actions after reaching per-run limit %d", config.Policy.MaxActionsPerRun))
+				break
 			}
 			if state.addAction(action) {
 				report.ActionsCreated++
@@ -113,32 +112,78 @@ func (runner Runner) RunOnce(ctx context.Context, config Config) (RunReport, err
 		}
 	}
 	state.Targets = results
-	executed := 0
-	for index := range state.Actions {
-		if executed >= config.Policy.MaxActionsPerRun || state.Actions[index].Status != "approved" {
-			continue
-		}
-		executed++
-		report.ActionsRun++
-		resultURL, executeErr := executeAction(ctx, config, state.Actions[index])
-		state.Actions[index].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-		if executeErr != nil {
-			state.Actions[index].Status = "failed"
-			state.Actions[index].Error = safeError(executeErr)
-			state.AppendAudit("action_failed", state.Actions[index].ID, state.Actions[index].Type+": "+safeError(executeErr))
-			report.ActionsFailed++
-			continue
-		}
-		state.Actions[index].Status = "completed"
-		state.Actions[index].ResultURL = resultURL
-		state.Actions[index].Error = ""
-		state.AppendAudit("action_completed", state.Actions[index].ID, state.Actions[index].Type)
-	}
-	state.AppendAudit("run_completed", "", fmt.Sprintf("targets=%d created=%d executed=%d failed=%d", report.TargetsChecked, report.ActionsCreated, report.ActionsRun, report.ActionsFailed))
+	state.AppendAudit("run_completed", "", fmt.Sprintf("targets=%d created=%d", report.TargetsChecked, report.ActionsCreated))
 	if err := SaveState(config.StatePath, state); err != nil {
 		return report, err
 	}
 	return report, nil
+}
+
+// ApplyApproved executes one exact action after a separately persisted human
+// approval. The running state is saved before the external mutation so a crash
+// cannot silently retry an action whose outcome may be unknown.
+func ApplyApproved(ctx context.Context, config Config, id string) (string, error) {
+	if err := config.Validate(); err != nil {
+		return "", err
+	}
+	state, err := LoadState(config.StatePath)
+	if err != nil {
+		return "", err
+	}
+	index := -1
+	for candidate := range state.Actions {
+		if state.Actions[candidate].ID == id {
+			index = candidate
+			break
+		}
+	}
+	if index < 0 {
+		return "", fmt.Errorf("action %s was not found", id)
+	}
+	if state.Actions[index].Status != "approved" {
+		return "", fmt.Errorf("action %s cannot run from status %s", id, state.Actions[index].Status)
+	}
+	action := state.Actions[index]
+	state.Actions[index].Status = "running"
+	state.Actions[index].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	state.AppendAudit("action_started", id, action.Type+" after human approval")
+	if err := SaveState(config.StatePath, state); err != nil {
+		return "", err
+	}
+
+	resultURL, executeErr := executeAction(ctx, config, action)
+	state, loadErr := LoadState(config.StatePath)
+	if loadErr != nil {
+		return "", loadErr
+	}
+	index = -1
+	for candidate := range state.Actions {
+		if state.Actions[candidate].ID == id {
+			index = candidate
+			break
+		}
+	}
+	if index < 0 || state.Actions[index].Status != "running" {
+		return "", errors.New("approved action state changed while it was running")
+	}
+	state.Actions[index].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	if executeErr != nil {
+		state.Actions[index].Status = "failed"
+		state.Actions[index].Error = safeError(executeErr)
+		state.AppendAudit("action_failed", id, action.Type+": "+safeError(executeErr))
+	} else {
+		state.Actions[index].Status = "completed"
+		state.Actions[index].ResultURL = resultURL
+		state.Actions[index].Error = ""
+		state.AppendAudit("action_completed", id, action.Type)
+	}
+	if err := SaveState(config.StatePath, state); err != nil {
+		return "", err
+	}
+	if executeErr != nil {
+		return "", executeErr
+	}
+	return resultURL, nil
 }
 
 func assessTarget(target Target, mode string) (TargetResult, []Action, error) {

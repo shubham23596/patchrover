@@ -1,14 +1,14 @@
 ---
 title: Roadmap
-description: PatchRover's staged path from local alpha to a commercial control plane.
+description: PatchRover's staged path from its open-source foundation to a commercial control plane.
 ---
 
-## Alpha foundation
+## Open-source foundation
 
 - Deterministic four-state verdict interface and signed response packs.
 - Repository, SBOM, explicit OCI reference, and read-only Kubernetes evidence.
-- Local remediation proposals, approval-gated or policy-authorized pull requests, typed Vault database credential rotation, and integrity-verifiable receipts.
-- Safe five-minute demo, two public incident packs, and a reusable GitHub Action.
+- Local remediation proposals, approval-gated pull requests, typed Vault database credential rotation, and integrity-verifiable receipts.
+- Two public incident packs, reusable synthetic test fixtures, and a GitHub Action.
 - Local Ollama and explicit HTTPS BYOK explanation adapters that cannot alter verdicts.
 - Structured CISA KEV, GitHub Advisory, and official RSS/Atom monitoring with exact HTTPS host allowlists.
 
@@ -21,7 +21,7 @@ description: PatchRover's staged path from local alpha to a commercial control p
 
 ## Commercial control plane
 
-- Private packs, continuous monitoring, fleet inventory, drift alerts, and history.
+- Private packs, continuous monitoring, an approval inbox, approved fix application, fleet inventory, drift alerts, and history.
 - SSO/RBAC, audit retention, workflow integrations, SLAs, and incident support.
 
 The open-source CLI, public pack format, public post-disclosure packs, and receipt verifier remain public. Progress is measured by repeat incident use, receipts, and paid conversions—not stars alone.

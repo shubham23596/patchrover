@@ -6,8 +6,9 @@ const base = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
 const link = (path: string) => `${base}${path.replace(/^\//, '')}`;
 const githubUrl = import.meta.env.PUBLIC_GITHUB_URL;
 const contactEmail = import.meta.env.PUBLIC_CONTACT_EMAIL;
+const discussionsUrl = githubUrl ? `${githubUrl}/discussions` : link('getting-started/');
 const title = 'PatchRover — Track. Fix. Prove.';
-const description = 'Monitor critical vulnerabilities, open bounded fixes, rotate allowlisted machine credentials, and prove what is running.';
+const description = 'Find where critical vulnerabilities affect your code and running systems, prepare safe fixes, and confirm the fixed version is live.';
 ---
 
 <!doctype html>
@@ -29,7 +30,6 @@ const description = 'Monitor critical vulnerabilities, open bounded fixes, rotat
       <a class="brand" href={base} aria-label="PatchRover home">
         <RoverMark size={38} />
         <span>PatchRover</span>
-        <small>alpha</small>
       </a>
       <nav aria-label="Primary navigation">
         <a href="#workflow">Workflow</a>
@@ -37,29 +37,29 @@ const description = 'Monitor critical vulnerabilities, open bounded fixes, rotat
         <a href="#security">Security</a>
         <a href={link('getting-started/')}>Docs</a>
       </nav>
-      <a class="header-cta" href="#demo">Run demo <span aria-hidden="true">↘</span></a>
+      <a class="header-cta" href="#approval">Approval flow <span aria-hidden="true">↘</span></a>
     </header>
 
     <main id="main">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <div class="eyebrow"><span></span> Local-first incident response</div>
+          <div class="eyebrow"><span></span> Open-source security agent</div>
           <h1 id="hero-title">Track. Fix.<br /><em>Prove.</em></h1>
-          <p class="lede">PatchRover monitors critical vulnerabilities, correlates signed evidence across source and runtime, opens bounded fixes, and proves what is actually running.</p>
+          <p class="lede">PatchRover finds where a serious security issue affects your systems, shows the exact fix, asks for approval, and checks that the fixed version is live.</p>
           <div class="hero-actions">
-            <a class="button primary" href="#demo">Run the five-minute demo <span aria-hidden="true">→</span></a>
+            <a class="button primary" href="#approval">See the approval flow <span aria-hidden="true">→</span></a>
             {
               githubUrl ? (
                 <a class="button secondary" href={githubUrl}>View on GitHub</a>
               ) : (
-                <a class="button secondary" href="#source-status">GitHub launch status</a>
+                <a class="button secondary" href={link('getting-started/')}>Read the docs</a>
               )
             }
           </div>
           <ul class="trust-list" aria-label="Product principles">
-            <li>Policy-controlled actions</li>
-            <li>No model required</li>
-            <li>No silent data upload</li>
+            <li>Approval before every fix</li>
+            <li>No automatic deployment</li>
+            <li>No data upload by default</li>
           </ul>
         </div>
 
@@ -88,112 +88,105 @@ const description = 'Monitor critical vulnerabilities, open bounded fixes, rotat
             <div><small>RUNNING WORKLOAD</small><strong>api-prod / 12 pods</strong></div>
             <span class="pill fixed">Verified</span>
           </div>
-          <div class="rover-badge" aria-hidden="true"><RoverMark size={64} label="" /><span>Evidence<br />retrieved</span></div>
+          <div class="rover-badge" aria-hidden="true"><RoverMark size={64} label="" /><span>Fix<br />verified</span></div>
         </div>
       </section>
 
       <section class="proof-strip" aria-label="Project facts">
-        <div><strong>4</strong><span>deterministic verdicts</span></div>
-        <div><strong>2</strong><span>typed write capabilities</span></div>
-        <div><strong>2</strong><span>signed launch packs</span></div>
-        <div><strong>100%</strong><span>synthetic demo fixtures</span></div>
+        <div><strong>4</strong><span>clear result states</span></div>
+        <div><strong>2</strong><span>approved fix types</span></div>
+        <div><strong>2</strong><span>included incident packs</span></div>
+        <div><strong>0</strong><span>unapproved changes</span></div>
       </section>
 
       <section class="workflow section" id="workflow" aria-labelledby="workflow-title">
         <div class="section-intro">
-          <div class="eyebrow"><span></span> One evidence trail</div>
-          <h2 id="workflow-title">A fix is not finished<br />until production agrees.</h2>
-          <p>Scanners find risk. PatchRover’s wedge is proving whether the reviewed fix reached the artifact and workload that matter.</p>
+          <div class="eyebrow"><span></span> How it works</div>
+          <h2 id="workflow-title">Find the risk. Prepare the fix.<br />Check what is live.</h2>
+          <p>Most tools stop after changing code. PatchRover also checks the container and running workload so your team knows whether the fix reached production.</p>
         </div>
         <ol class="steps">
           <li>
             <span class="step-number">01</span>
             <div class="step-icon" aria-hidden="true">⌁</div>
             <h3>Track</h3>
-            <p>A signed response pack maps authoritative incident data to source, SBOM, image, and explicit Kubernetes evidence.</p>
-            <code>verdict: affected</code>
+            <p>Checks approved code, container images, and Kubernetes workloads against a trusted incident Pack.</p>
+            <code>result: affected</code>
           </li>
           <li>
             <span class="step-number">02</span>
             <div class="step-icon" aria-hidden="true">△</div>
             <h3>Fix</h3>
-            <p>PatchRover proposes locally or opens a stale-content-protected pull request. It can rotate only exact allowlisted machine credentials.</p>
-            <code>policy: explicit</code>
+            <p>Shows the exact change and asks a responsible person to approve it before anything is applied.</p>
+            <code>action: review required</code>
           </li>
           <li>
             <span class="step-number">03</span>
             <div class="step-icon" aria-hidden="true">✓</div>
             <h3>Prove</h3>
-            <p>Fresh evidence confirms the fixed source and immutable running digest, then creates a redacted, signed receipt.</p>
-            <code>receipt: integrity_valid</code>
+            <p>Checks the live workload and creates a signed Receipt when the fixed version is running.</p>
+            <code>result: verified</code>
           </li>
         </ol>
       </section>
 
       <section class="workflow section" aria-labelledby="agent-title">
         <div class="section-intro">
-          <div class="eyebrow"><span></span> Safe autonomy</div>
-          <h2 id="agent-title">Intelligent enough to act.<br />Bounded enough to trust.</h2>
-          <p>The self-hosted agent monitors structured CISA, GitHub Advisory, and official publisher feeds. A new advisory becomes an automatic fix only when a signed Response Pack supplies deterministic rules.</p>
+          <div class="eyebrow"><span></span> Automation you control</div>
+          <h2 id="agent-title">Watch for new incidents.<br />Respond within clear limits.</h2>
+          <p>PatchRover watches trusted security feeds. When it finds a supported issue, it prepares the fix and asks your team for approval.</p>
         </div>
         <ol class="steps">
-          <li><span class="step-number">01</span><div class="step-icon" aria-hidden="true">◉</div><h3>Observe</h3><p>Continuously ingest allowlisted HTTPS feeds and reassess explicit repositories and runtime evidence.</p><code>mode: observe</code></li>
-          <li><span class="step-number">02</span><div class="step-icon" aria-hidden="true">◇</div><h3>Propose</h3><p>Queue an exact pull request or machine-credential rotation for a human to approve by action ID.</p><code>mode: propose</code></li>
-          <li><span class="step-number">03</span><div class="step-icon" aria-hidden="true">✓</div><h3>Authorize</h3><p>Execute only action types listed in policy, with rate limits and a tamper-evident audit history.</p><code>mode: authorized</code></li>
+          <li><span class="step-number">01</span><div class="step-icon" aria-hidden="true">◉</div><h3>Watch</h3><p>Checks trusted feeds and re-runs approved scans when a relevant incident appears.</p><code>always watching</code></li>
+          <li><span class="step-number">02</span><div class="step-icon" aria-hidden="true">◇</div><h3>Ask</h3><p>Shows the affected system, proposed change, and why the fix is needed.</p><code>approval required</code></li>
+          <li><span class="step-number">03</span><div class="step-icon" aria-hidden="true">✓</div><h3>Fix</h3><p>After approval, opens the exact pull request or rotates an allowlisted machine credential. It never changes human passwords or deploys to production.</p><code>approved action only</code></li>
         </ol>
       </section>
 
-      <section class="demo section" id="demo" aria-labelledby="demo-title">
-        <div class="demo-copy">
-          <div class="eyebrow light"><span></span> Deterministic and account-free</div>
-          <h2 id="demo-title">See the full incident loop in under five minutes.</h2>
-          <p>The demo creates only temporary synthetic files. It makes no network request, downloads no compromised artifact, calls no model, and touches no production system.</p>
-          <div class="command-box">
-            <code id="demo-command">go run ./cmd/patchrover demo</code>
-            <button type="button" data-copy="#demo-command" aria-label="Copy demo command">Copy</button>
-          </div>
-          <p class="command-note">Run from a local PatchRover checkout. Binary releases begin after public launch.</p>
-          <a class="text-link" href={link('getting-started/')}>Read the quickstart <span aria-hidden="true">→</span></a>
+      <section class="approval section" id="approval" aria-labelledby="approval-title">
+        <div class="approval-copy">
+          <div class="eyebrow light"><span></span> Human approval built in</div>
+          <h2 id="approval-title">Nothing changes until a person says yes.</h2>
+          <p>PatchRover shows the exact file, version, or machine credential it wants to change. The approved action is recorded in a tamper-evident history before the fix runs.</p>
+          <a class="text-link light-link" href={link('autonomous-agent/')}>Read the approval workflow <span aria-hidden="true">→</span></a>
         </div>
-        <div class="terminal" aria-label="Example PatchRover demo output">
-          <div class="terminal-bar"><span></span><span></span><span></span><small>patchrover demo</small></div>
+        <div class="terminal" aria-label="Example PatchRover approval request">
+          <div class="terminal-bar"><span></span><span></span><span></span><small>PatchRover approval</small></div>
           <div class="terminal-body">
-            <p><b>PatchRover demo</b> — Track. Fix. Prove.</p>
-            <p class="dim">Synthetic fixtures only. No network or model.</p>
-            <p><i>1/5</i> Verified signed response pack</p>
-            <p><i>2/5</i> ASSESS&nbsp;&nbsp;<mark class="red">affected</mark></p>
-            <p><i>3/5</i> PROPOSE local diff only</p>
+            <p><b>FIX REQUIRES APPROVAL</b></p>
+            <p><i>ISSUE</i>&nbsp;&nbsp;<mark class="red">affected</mark> LiteLLM package</p>
+            <p><i>CHANGE</i>&nbsp; requirements.txt</p>
             <p class="diff"><del>- litellm==1.107.0</del><br /><ins>+ litellm==1.106.2</ins></p>
-            <p><i>4/5</i> VERIFY&nbsp;&nbsp;<mark>fixed</mark></p>
-            <p><i>5/5</i> RECEIPT integrity=true</p>
-            <p class="complete">● Demo complete</p>
+            <p><i>ASK</i>&nbsp;&nbsp;&nbsp; Apply this exact fix? <b>yes</b></p>
+            <p><i>ACTION</i>&nbsp; Pull request opened for review</p>
+            <p class="complete">● Approved action completed</p>
           </div>
         </div>
       </section>
 
       <section class="verdicts section" aria-labelledby="verdict-title">
         <div class="section-intro compact">
-          <div class="eyebrow"><span></span> Honest verdicts</div>
-          <h2 id="verdict-title">Missing evidence never becomes a green badge.</h2>
+          <div class="eyebrow"><span></span> Clear answers</div>
+          <h2 id="verdict-title">No proof means no green check.</h2>
         </div>
         <div class="verdict-grid">
           <article class="verdict-card danger">
             <div><span></span>AFFECTED</div>
-            <h3>An exact rule matched.</h3>
-            <p>Source version <code>8.4.26</code> and the running workload are below the signed pack’s fixed threshold.</p>
-            <small>Evidence confidence: high</small>
+            <h3>A vulnerable version was found.</h3>
+            <p>PatchRover found the affected version in the code and in the running workload.</p>
+            <small>Next: prepare the fix</small>
           </article>
           <article class="verdict-card unknown">
             <div><span></span>UNKNOWN</div>
-            <h3>The facts are incomplete.</h3>
-            <p>A mutable tag is present, but no immutable runtime digest was observed. PatchRover refuses to infer safety.</p>
-            <small>Action: collect runtime digest</small>
+            <h3>More evidence is needed.</h3>
+            <p>PatchRover cannot confirm which image is running, so it does not call the system safe.</p>
+            <small>Next: collect the running image ID</small>
           </article>
           <article class="verdict-card safe">
             <div><span></span>FIXED + RECEIPT</div>
-            <h3>Production matches the fix.</h3>
-            <p>Fixed source and a new running image digest were observed. The redacted receipt passes integrity verification.</p>
-            <small>Identity trust: policy-dependent</small>
+            <h3>The fix is live.</h3>
+            <p>The fixed code and running image were both confirmed. PatchRover creates a signed Receipt.</p>
+            <small>Receipt ready to verify</small>
           </article>
         </div>
       </section>
@@ -201,10 +194,10 @@ const description = 'Monitor critical vulnerabilities, open bounded fixes, rotat
       <section class="packs section" id="packs" aria-labelledby="packs-title">
         <div class="section-intro split">
           <div>
-            <div class="eyebrow"><span></span> Response Pack registry</div>
-            <h2 id="packs-title">Incident knowledge that can be reviewed, signed, and improved.</h2>
+            <div class="eyebrow"><span></span> Incident Packs</div>
+            <h2 id="packs-title">One trusted playbook for each security incident.</h2>
           </div>
-          <p>Packs are declarative JSON. They reference official sources and invoke only built-in collectors—never arbitrary shell code.</p>
+          <p>A Pack tells PatchRover what to look for, how to fix it, and how to confirm the fix. Packs cannot run arbitrary commands.</p>
         </div>
         <div class="pack-table" role="table" aria-label="Initial PatchRover response packs">
           <div class="pack-row table-head" role="row">
@@ -226,104 +219,68 @@ const description = 'Monitor critical vulnerabilities, open bounded fixes, rotat
         <div class="pack-walkthroughs" aria-label="Response pack walkthroughs">
           <article>
             <span>01 · PHP RCE</span>
-            <h3>Version line → rebuilt image → running digest</h3>
+            <h3>Find old PHP → update it → confirm the new version is live</h3>
             <ol>
-              <li>Match PHP 8.2–8.5 evidence against the signed minimum fixed version for its release line.</li>
-              <li>Propose the exact supported upgrade while preserving image-tag suffixes such as <code>-apache</code>.</li>
-              <li>Issue a receipt only after a fixed runtime and immutable SHA-256 digest are observed.</li>
+              <li>Find affected PHP versions in approved code and workloads.</li>
+              <li>Prepare the correct supported upgrade for each version line.</li>
+              <li>Create a Receipt only after the fixed image is running.</li>
             </ol>
           </article>
           <article>
             <span>02 · LiteLLM compromise</span>
-            <h3>Package indicator → clean rebuild → credential response</h3>
+            <h3>Find the compromised package → rebuild safely → rotate exposed keys</h3>
             <ol>
-              <li>Match only the compromised version, incident-time tags, or a fully published affected digest.</li>
-              <li>Keep partial digests and missing runtime identity unknown; never download the compromised artifact.</li>
-              <li>Require a clean rebuild, fresh running digest, incident review, and the pack’s credential-rotation checklist.</li>
+              <li>Find the known compromised version without downloading it.</li>
+              <li>Require a clean rebuild and confirm the new image is running.</li>
+              <li>Guide the team through the required machine-key rotations.</li>
             </ol>
           </article>
         </div>
-        <p class="pack-note">The LiteLLM investigation is evolving. Its pack expires quickly and supports signed replacement or revocation. Prefix-only digests are not treated as exact indicators.</p>
+        <p class="pack-note">The LiteLLM incident is still changing. Its Pack expires quickly and can be replaced or revoked when new facts appear.</p>
       </section>
 
       <section class="security section" id="security" aria-labelledby="security-title">
         <div class="security-panel">
           <div class="section-intro compact">
-            <div class="eyebrow light"><span></span> Security model</div>
-            <h2 id="security-title">Useful under pressure.<br />Conservative by design.</h2>
+            <div class="eyebrow light"><span></span> Built-in safety</div>
+            <h2 id="security-title">Automation with hard limits.</h2>
           </div>
           <div class="security-grid">
-            <div><strong>01</strong><h3>Deterministic verdicts</h3><p>AI may explain evidence or draft a proposal. It cannot turn <code>unknown</code> into <code>not_affected</code>.</p></div>
-            <div><strong>02</strong><h3>Bounded actions</h3><p>Kubernetes stays read-only. Writes are typed pull requests or exact Vault database rotations—never shell, merge, deploy, or human-password access.</p></div>
-            <div><strong>03</strong><h3>Signed content</h3><p>Pack bytes, trails, and DSSE-wrapped in-toto receipts fail closed when modified.</p></div>
-            <div><strong>04</strong><h3>Private by default</h3><p>Receipts tokenize internal asset identities. Public sharing is a separate, explicit decision.</p></div>
+            <div><strong>01</strong><h3>Rules decide the result</h3><p>AI can explain a result, but it cannot label missing evidence as safe.</p></div>
+            <div><strong>02</strong><h3>No surprise changes</h3><p>PatchRover never runs shell commands, merges pull requests, deploys code, or changes human passwords.</p></div>
+            <div><strong>03</strong><h3>Tampering is detected</h3><p>Changes to a Pack, Trail, or Receipt make verification fail.</p></div>
+            <div><strong>04</strong><h3>Private by default</h3><p>Receipts hide internal names. Sharing them is always optional.</p></div>
           </div>
-          <a class="text-link light-link" href={link('security-model/')}>Read the threat model and limitations <span aria-hidden="true">→</span></a>
+          <a class="text-link light-link" href={link('security-model/')}>See all safety rules <span aria-hidden="true">→</span></a>
         </div>
       </section>
 
       <section class="comparison section" aria-labelledby="comparison-title">
         <div class="section-intro compact">
-          <div class="eyebrow"><span></span> Open-core, clearly divided</div>
-          <h2 id="comparison-title">Safety knowledge stays public. Operations become the business.</h2>
+          <div class="eyebrow"><span></span> Open source + team edition</div>
+          <h2 id="comparison-title">Start free. Add team controls when you need them.</h2>
         </div>
         <div class="comparison-grid">
           <article>
-            <header><span>APACHE-2.0</span><h3>Open source</h3><p>Everything required to assess and prove one authorized environment locally.</p></header>
-            <ul><li>CLI and deterministic engine</li><li>Response-pack format and registry</li><li>Evidence collectors and GitHub Action</li><li>Receipt creation and verification</li><li>Local-model and BYOK interfaces</li></ul>
+            <header><span>APACHE-2.0</span><h3>Open source</h3><p>Find affected systems and independently verify the result.</p></header>
+            <ul><li>CLI and core security checks</li><li>Public incident Packs</li><li>GitHub Action and evidence collection</li><li>Signed Receipt verification</li><li>Local AI or your own model key</li></ul>
             <a href={link('getting-started/')}>Explore the docs →</a>
           </article>
           <article class="commercial">
-            <header><span>DESIGN PARTNERS</span><h3>Commercial</h3><p>Continuous evidence and governance across an organization’s software fleet.</p></header>
-            <ul><li>Continuous fleet monitoring</li><li>Private packs and blast-radius maps</li><li>SSO, RBAC, history, and drift alerts</li><li>Enterprise integrations and SLAs</li><li>Implementation and incident support</li></ul>
-            {contactEmail ? <a href={`mailto:${contactEmail}`}>Discuss a design partnership →</a> : <a href="#source-status">Contact status →</a>}
+            <header><span>COMMERCIAL</span><h3>For teams</h3><p>Monitor, approve, and fix issues across your organization.</p></header>
+            <ul><li>Continuous monitoring</li><li>Approval inbox and approved fix application</li><li>Private Packs and company-wide impact view</li><li>Team access controls and audit history</li><li>Integrations, support, and SLA</li></ul>
+            {contactEmail ? <a href={`mailto:${contactEmail}`}>Discuss a design partnership →</a> : <a href={discussionsUrl}>Talk to us on GitHub →</a>}
           </article>
-        </div>
-      </section>
-
-      <section class="launch-status section" id="source-status" aria-labelledby="status-title">
-        <div>
-          <div class="eyebrow"><span></span> Credible launch, not an empty repository</div>
-          <h2 id="status-title">Working alpha launch.</h2>
-        </div>
-        <div>
-          <p>The source, autonomous controller, two signed packs, threat model, contribution process, tests, and GitHub Pages site ship together from founder Shubham Jain’s GitHub account. This is an inspectable alpha, not a claim of production certification.</p>
-          <ul>
-            <li><span class="done">✓</span> Local deterministic demo and golden corpus</li>
-            <li><span class="done">✓</span> Signed alpha packs and tamper checks</li>
-            <li><span class="done">✓</span> Policy-controlled pull requests and machine-credential rotation</li>
-            <li><span class="pending">→</span> Trademark, domain, and account clearance</li>
-            <li><span class="pending">→</span> Organization controls and first public release</li>
-          </ul>
-          <p class="contact-status">{contactEmail ? <>Design-partner contact: <a href={`mailto:${contactEmail}`}>{contactEmail}</a></> : <>The company contact address will appear here after domain clearance. No lead-capture backend is used.</>}</p>
         </div>
       </section>
     </main>
 
     <footer>
       <a class="brand footer-brand" href={base}><RoverMark size={36} /><span>PatchRover</span></a>
-      <p>Track. Fix. Prove.<br /><small>Open-source incident response evidence.</small></p>
+      <p>Track. Fix. Prove.<br /><small>Know what is affected and whether the fix is live.</small></p>
       <nav aria-label="Footer navigation"><a href={link('getting-started/')}>Documentation</a><a href={link('roadmap/')}>Roadmap</a><a href={link('contributing/')}>Contribute</a><a href={link('governance/')}>Governance</a></nav>
-      <p class="legal">Apache-2.0 · Working alpha · Not a guarantee of security</p>
+      <p class="legal">Apache-2.0 · Human approval required</p>
     </footer>
 
-    <script>
-      document.querySelectorAll('[data-copy]').forEach((button) => {
-        button.addEventListener('click', async () => {
-		  const selector = button.getAttribute('data-copy');
-		  if (!selector) return;
-          const target = document.querySelector(selector);
-          if (!(target instanceof HTMLElement)) return;
-          try {
-            await navigator.clipboard.writeText(target.textContent || '');
-            const original = button.textContent;
-            button.textContent = 'Copied';
-            window.setTimeout(() => { button.textContent = original; }, 1600);
-          } catch {
-            target.focus();
-          }
-        });
-      });
-    </script>
   </body>
 </html>

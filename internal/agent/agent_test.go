@@ -133,7 +133,7 @@ func TestRunOnceQueuesActionsAndApproval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.ActionsCreated != 2 || report.ActionsRun != 0 {
+	if report.ActionsCreated != 2 {
 		t.Fatalf("unexpected report %+v", report)
 	}
 	state, err := LoadState(config.StatePath)
@@ -150,15 +150,36 @@ func TestRunOnceQueuesActionsAndApproval(t *testing.T) {
 	if state.Actions[0].Status != "approved" {
 		t.Fatal("approval was not persisted")
 	}
-}
-
-func TestAutonomousDemo(t *testing.T) {
-	var output strings.Builder
-	if err := Demo(&output); err != nil {
+	if _, err := (Runner{}).RunOnce(context.Background(), config); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "bounded PR content prepared") {
-		t.Fatal(output.String())
+	state, _ = LoadState(config.StatePath)
+	if state.Actions[0].Status != "approved" {
+		t.Fatalf("background assessment executed an approved action: %#v", state.Actions[0])
+	}
+}
+
+func TestApplyApprovedFailsClosedAndRecordsOutcome(t *testing.T) {
+	directory := t.TempDir()
+	config := validConfig(directory)
+	config.Integrations = Integrations{}
+	state := NewState()
+	state.Actions = []Action{{
+		ID: "approved-action", Type: ActionGitHubPullRequest, TargetID: "service", PackID: "incident-pack",
+		Status: "approved", Repository: "acme/service", BaseBranch: "main",
+	}}
+	if err := SaveState(config.StatePath, state); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ApplyApproved(context.Background(), config, "approved-action"); err == nil || !strings.Contains(err.Error(), "not configured") {
+		t.Fatalf("expected a closed failure for a missing integration, got %v", err)
+	}
+	state, err := LoadState(config.StatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Actions[0].Status != "failed" || len(state.Audit) != 2 || state.Audit[0].Event != "action_started" || state.Audit[1].Event != "action_failed" {
+		t.Fatalf("unexpected failed action state %#v", state)
 	}
 }
 

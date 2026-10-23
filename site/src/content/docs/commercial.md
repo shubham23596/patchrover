@@ -1,9 +1,9 @@
 ---
 title: Commercial edition
-description: What stays open source and what a future PatchRover service may sell.
+description: What stays open source and what the commercial PatchRover service provides.
 ---
 
-PatchRover uses an open-core model with a bright line: the local incident workflow and critical post-disclosure safety knowledge stay open.
+PatchRover uses an open-core model with a bright line: detection, evidence, public incident knowledge, and independent verification stay open. The commercial product turns those findings into an organization-wide approval and remediation workflow.
 
 ## Open source
 
@@ -11,14 +11,15 @@ PatchRover uses an open-core model with a bright line: the local incident workfl
 - Response-pack schema and public registry.
 - GitHub Action and built-in evidence collectors.
 - Local proposals, receipts, and independent verification.
-- Single-environment structured feed monitoring, policy-controlled pull requests, and typed Vault database credential rotation.
+- Single-environment structured feed monitoring and the already-published bounded GitHub/Vault action interfaces.
 - Local-model and customer-configured BYOK interfaces.
 
-## Commercial direction
+## Commercial product
 
-- Continuous fleet monitoring and organization history.
-- Private packs and cross-repository blast-radius maps.
-- SSO, RBAC, drift alerts, and governance policies.
-- Enterprise integrations, implementation help, support, and SLAs.
+- Continuous monitoring across repositories, images, and clusters.
+- A team approval inbox that shows the exact proposed fix and applies only the approved action.
+- Private Packs and an organization-wide impact map.
+- SSO, role-based access, immutable audit history, drift alerts, and governance policies.
+- Enterprise integrations, onboarding, support, and SLAs.
 
-The initial offer is a 90-day design-partner pilot. Pricing and contracts will be tested against demonstrated value rather than presented as proven demand. No customer logos, testimonials, or adoption metrics appear until they are real and authorized.
+The commercial service remains a design-partner product until its tenant-isolation, authentication, backup, recovery, audit, and external-security-review gates pass. Pricing and contracts will be tested against verified customer value rather than presented as proven demand. No customer logos, testimonials, adoption metrics, or production-readiness claims appear until they are real and authorized.

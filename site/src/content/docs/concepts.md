@@ -18,10 +18,10 @@ The overall verdict is conservative:
 - `affected`: an exact affected version, range, or digest matched.
 - `fixed`: every relevant observation matched an explicit fixed rule.
 - `unknown`: evidence is missing, contradictory, unparseable, or outside pack rules.
-- `not_affected`: reserved for explicit absence rules; the alpha never infers it from missing data.
+- `not_affected`: reserved for explicit absence rules; PatchRover never infers it from missing data.
 
 ## Receipts
 
-A **Receipt** is a redacted signed attestation of observed closure. The alpha uses a DSSE envelope, an in-toto Statement v1, and embedded OpenVEX-compatible fixed statements.
+A **Receipt** is a redacted signed attestation of observed closure. PatchRover uses a DSSE envelope, an in-toto Statement v1, and embedded OpenVEX-compatible fixed statements.
 
 Repository, cluster, namespace, workload, pod, and source identifiers are tokenized by default. The receipt can prove that signed bytes were not modified; signer identity becomes trusted only when an external organization or Sigstore policy establishes it.

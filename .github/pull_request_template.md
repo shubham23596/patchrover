@@ -6,7 +6,7 @@ Describe the user-visible and trust-boundary impact.
 
 - [ ] `go test -race ./...`
 - [ ] `go vet ./...`
-- [ ] `go run ./cmd/patchrover demo`
+- [ ] Approval-first agent tests pass
 - [ ] Both published packs validate
 - [ ] `cd site && npm ci && npm run build` (when the site changed)
 
