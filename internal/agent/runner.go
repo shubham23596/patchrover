@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -18,15 +19,18 @@ import (
 )
 
 type RunReport struct {
-	SourcesChecked int
-	SourceErrors   int
-	TargetsChecked int
-	ActionsCreated int
+	SourcesChecked   int
+	SourceErrors     int
+	TargetsChecked   int
+	ActionsCreated   int
+	ActionsSubmitted int
+	SubmissionErrors int
 }
 
 type Runner struct {
-	FeedClient FeedClient
-	Output     io.Writer
+	FeedClient       FeedClient
+	ControlPlaneHTTP *http.Client
+	Output           io.Writer
 }
 
 func (runner Runner) Run(ctx context.Context, config Config, once bool) error {
@@ -36,7 +40,7 @@ func (runner Runner) Run(ctx context.Context, config Config, once bool) error {
 			return err
 		}
 		if runner.Output != nil {
-			fmt.Fprintf(runner.Output, "AGENT sources=%d source_errors=%d targets=%d actions_created=%d\n", report.SourcesChecked, report.SourceErrors, report.TargetsChecked, report.ActionsCreated)
+			fmt.Fprintf(runner.Output, "AGENT sources=%d source_errors=%d targets=%d actions_created=%d actions_submitted=%d submission_errors=%d\n", report.SourcesChecked, report.SourceErrors, report.TargetsChecked, report.ActionsCreated, report.ActionsSubmitted, report.SubmissionErrors)
 		}
 		if once {
 			return nil
@@ -101,10 +105,16 @@ func (runner Runner) RunOnce(ctx context.Context, config Config) (RunReport, err
 			state.AppendAudit("target_assessed", "", target.ID+": "+string(result.Verdict))
 		}
 		results = append(results, result)
+		if config.Integrations.ControlPlane != nil {
+			actions = splitCommercialActions(actions)
+		}
 		for _, action := range actions {
 			if report.ActionsCreated >= config.Policy.MaxActionsPerRun {
 				state.AppendAudit("action_limit", "", fmt.Sprintf("deferred actions after reaching per-run limit %d", config.Policy.MaxActionsPerRun))
 				break
+			}
+			if config.Integrations.ControlPlane != nil && action.Status == "pending" {
+				action.Status = "submission_pending"
 			}
 			if state.addAction(action) {
 				report.ActionsCreated++
@@ -112,11 +122,58 @@ func (runner Runner) RunOnce(ctx context.Context, config Config) (RunReport, err
 		}
 	}
 	state.Targets = results
-	state.AppendAudit("run_completed", "", fmt.Sprintf("targets=%d created=%d", report.TargetsChecked, report.ActionsCreated))
+	if controlPlane := config.Integrations.ControlPlane; controlPlane != nil {
+		token := os.Getenv(controlPlane.TokenEnv)
+		client := ControlPlaneClient{BaseURL: controlPlane.URL, Token: token, HTTP: runner.ControlPlaneHTTP}
+		submissionAttempts := 0
+		for index := range state.Actions {
+			action := &state.Actions[index]
+			if action.Status != "submission_pending" {
+				continue
+			}
+			if submissionAttempts >= config.Policy.MaxActionsPerRun {
+				state.AppendAudit("action_submission_limit", "", fmt.Sprintf("deferred submissions after reaching per-run limit %d", config.Policy.MaxActionsPerRun))
+				break
+			}
+			submissionAttempts++
+			remote, submitErr := client.Submit(ctx, *action)
+			if submitErr != nil {
+				report.SubmissionErrors++
+				action.Error = safeError(submitErr)
+				action.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+				state.AppendAudit("action_submission_failed", action.ID, action.Error)
+				continue
+			}
+			report.ActionsSubmitted++
+			action.Status = "submitted"
+			action.ControlPlaneActionID = remote.ID
+			action.Error = ""
+			action.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+			state.AppendAudit("action_submitted", action.ID, "commercial approval action "+remote.ID)
+		}
+	}
+	state.AppendAudit("run_completed", "", fmt.Sprintf("targets=%d created=%d submitted=%d submission_errors=%d", report.TargetsChecked, report.ActionsCreated, report.ActionsSubmitted, report.SubmissionErrors))
 	if err := SaveState(config.StatePath, state); err != nil {
 		return report, err
 	}
 	return report, nil
+}
+
+func splitCommercialActions(actions []Action) []Action {
+	var output []Action
+	for _, action := range actions {
+		if action.Type != ActionGitHubPullRequest || len(action.Changes) <= 1 {
+			output = append(output, action)
+			continue
+		}
+		for _, change := range action.Changes {
+			bounded := action
+			bounded.ID = actionID(action.ID, change.Path, change.BeforeSHA256, change.OldVersion, change.NewVersion)
+			bounded.Changes = []model.RemediationChange{change}
+			output = append(output, bounded)
+		}
+	}
+	return output
 }
 
 // ApplyApproved executes one exact action after a separately persisted human
@@ -221,12 +278,12 @@ func assessTarget(target Target, mode string) (TargetResult, []Action, error) {
 			changes[index].Patch = ""
 		}
 		id := actionID(ActionGitHubPullRequest, target.ID, validation.PackDigest, target.GitHubRepository, fingerprint)
-		actions = append(actions, Action{ID: id, Type: ActionGitHubPullRequest, TargetID: target.ID, PackID: responsePack.Metadata.ID, Status: status, CreatedAt: now, UpdatedAt: now, Repository: target.GitHubRepository, BaseBranch: target.BaseBranch, Changes: changes})
+		actions = append(actions, Action{ID: id, Type: ActionGitHubPullRequest, TargetID: target.ID, PackID: responsePack.Metadata.ID, TrailID: trail.ID, Status: status, CreatedAt: now, UpdatedAt: now, Repository: target.GitHubRepository, BaseBranch: target.BaseBranch, Changes: changes})
 	}
 	if len(responsePack.Spec.Remediation.CredentialRotation) > 0 {
 		for _, database := range target.VaultDatabaseRotations {
 			id := actionID(ActionVaultDatabaseRotation, target.ID, validation.PackDigest, database)
-			actions = append(actions, Action{ID: id, Type: ActionVaultDatabaseRotation, TargetID: target.ID, PackID: responsePack.Metadata.ID, Status: status, CreatedAt: now, UpdatedAt: now, VaultDatabase: database})
+			actions = append(actions, Action{ID: id, Type: ActionVaultDatabaseRotation, TargetID: target.ID, PackID: responsePack.Metadata.ID, TrailID: trail.ID, Status: status, CreatedAt: now, UpdatedAt: now, VaultDatabase: database})
 		}
 	}
 	return result, actions, nil

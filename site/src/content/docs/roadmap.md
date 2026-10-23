@@ -22,6 +22,7 @@ description: PatchRover's staged path from its open-source foundation to a comme
 ## Commercial control plane
 
 - Private packs, continuous monitoring, an approval inbox, approved fix application, fleet inventory, drift alerts, and history.
+- The bounded agent-to-inbox bridge and customer-hosted remediation runner are implemented; hosted staging and production-readiness gates remain open.
 - SSO/RBAC, audit retention, workflow integrations, SLAs, and incident support.
 
 The open-source CLI, public pack format, public post-disclosure packs, and receipt verifier remain public. Progress is measured by repeat incident use, receipts, and paid conversions—not stars alone.

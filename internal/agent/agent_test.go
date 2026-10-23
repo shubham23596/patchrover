@@ -1,11 +1,13 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,6 +28,24 @@ func TestConfigRejectsUnallowlistedAndInsecureEndpoints(t *testing.T) {
 	config.Sources[0].URL = "https://not-allowed.example/kev.json"
 	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "not allowlisted") {
 		t.Fatalf("expected host rejection, got %v", err)
+	}
+}
+
+func TestConfigSeparatesCommercialAndLocalWriteCredentials(t *testing.T) {
+	config := validConfig(t.TempDir())
+	config.Integrations.ControlPlane = &ControlPlaneConfig{URL: "https://control.example", TokenEnv: "PATCHROVER_CONTROL_PLANE_TOKEN"}
+	config.AllowedHosts = append(config.AllowedHosts, "control.example")
+	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "cannot be enabled together") {
+		t.Fatalf("mixed local and commercial writes returned %v", err)
+	}
+	config.Integrations.GitHub = nil
+	config.Integrations.Vault = nil
+	if err := config.Validate(); err != nil {
+		t.Fatalf("commercial-only integration was rejected: %v", err)
+	}
+	config.Mode = "observe"
+	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "propose mode") {
+		t.Fatalf("observe-mode commercial integration returned %v", err)
 	}
 }
 
@@ -128,6 +148,7 @@ func TestRunOnceQueuesActionsAndApproval(t *testing.T) {
 	config.Targets[0].Evidence.RepositoryPath = repository
 	config.Targets[0].Pack = filepath.Join("..", "..", "packs", "litellm-1.107.0-compromise")
 	config.Targets[0].GitHubRepository = "acme/service"
+	config.Targets[0].BaseBranch = "main"
 	config.Targets[0].VaultDatabaseRotations = []string{"service-db"}
 	report, err := (Runner{}).RunOnce(context.Background(), config)
 	if err != nil {
@@ -156,6 +177,88 @@ func TestRunOnceQueuesActionsAndApproval(t *testing.T) {
 	state, _ = LoadState(config.StatePath)
 	if state.Actions[0].Status != "approved" {
 		t.Fatalf("background assessment executed an approved action: %#v", state.Actions[0])
+	}
+}
+
+func TestRunOnceSubmitsBoundedActionsToCommercialApprovalInbox(t *testing.T) {
+	directory := t.TempDir()
+	repository := filepath.Join(directory, "repo")
+	if err := os.Mkdir(repository, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repository, "requirements.txt"), []byte("litellm==1.107.0\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var submissions []map[string]any
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost || request.URL.Path != "/api/v1/agent/actions" {
+			http.Error(writer, "unexpected endpoint", http.StatusNotFound)
+			return
+		}
+		if request.Header.Get("Authorization") != "Bearer commercial-runner-token" {
+			http.Error(writer, "missing token", http.StatusUnauthorized)
+			return
+		}
+		var submission map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&submission); err != nil {
+			t.Error(err)
+			http.Error(writer, "bad JSON", http.StatusBadRequest)
+			return
+		}
+		encoded, _ := json.Marshal(submission)
+		if bytes.Contains(encoded, []byte("litellm==1.107.0")) || bytes.Contains(encoded, []byte("commercial-runner-token")) {
+			t.Error("repository content or token reached the control plane payload")
+		}
+		submissions = append(submissions, submission)
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(writer).Encode(map[string]string{"id": fmt.Sprintf("remote-%d", len(submissions)), "status": "pending"}); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("PATCHROVER_CONTROL_PLANE_TOKEN", "commercial-runner-token")
+	config := validConfig(directory)
+	config.AllowedHosts = append(config.AllowedHosts, "127.0.0.1")
+	config.Integrations = Integrations{ControlPlane: &ControlPlaneConfig{URL: server.URL, TokenEnv: "PATCHROVER_CONTROL_PLANE_TOKEN"}}
+	config.Targets[0].Evidence.RepositoryPath = repository
+	config.Targets[0].Pack = filepath.Join("..", "..", "packs", "litellm-1.107.0-compromise")
+	config.Targets[0].GitHubRepository = "acme/service"
+	config.Targets[0].BaseBranch = "main"
+	config.Targets[0].VaultDatabaseRotations = []string{"service-db"}
+	runner := Runner{ControlPlaneHTTP: server.Client()}
+	report, err := runner.RunOnce(context.Background(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.ActionsCreated != 2 || report.ActionsSubmitted != 2 || report.SubmissionErrors != 0 || len(submissions) != 2 {
+		t.Fatalf("unexpected submission report %+v payloads=%d", report, len(submissions))
+	}
+	state, err := LoadState(config.StatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, action := range state.Actions {
+		if action.Status != "submitted" || action.ControlPlaneActionID == "" || action.TrailID == "" {
+			t.Fatalf("action was not bound to commercial approval: %#v", action)
+		}
+	}
+	if _, err := runner.RunOnce(context.Background(), config); err != nil {
+		t.Fatal(err)
+	}
+	if len(submissions) != 2 {
+		t.Fatalf("submitted actions were sent again: %d payloads", len(submissions))
+	}
+}
+
+func TestCommercialActionsSplitMultiFileChanges(t *testing.T) {
+	action := Action{ID: "combined", Type: ActionGitHubPullRequest, Changes: []model.RemediationChange{
+		{Path: "go.mod", BeforeSHA256: strings.Repeat("a", 64), OldVersion: "1", NewVersion: "2"},
+		{Path: "go.sum", BeforeSHA256: strings.Repeat("b", 64), OldVersion: "1", NewVersion: "2"},
+	}}
+	bounded := splitCommercialActions([]Action{action})
+	if len(bounded) != 2 || len(bounded[0].Changes) != 1 || len(bounded[1].Changes) != 1 || bounded[0].ID == bounded[1].ID {
+		t.Fatalf("multi-file action was not split into deterministic bounded actions: %#v", bounded)
 	}
 }
 

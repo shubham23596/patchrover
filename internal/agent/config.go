@@ -21,6 +21,7 @@ const ConfigVersion = "patchrover.dev/agent/v1alpha1"
 var (
 	targetIDPattern    = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,62}$`)
 	repositoryPattern  = regexp.MustCompile(`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`)
+	branchPattern      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$`)
 	resourcePattern    = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 	environmentPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
@@ -59,8 +60,14 @@ type Policy struct {
 }
 
 type Integrations struct {
-	GitHub *GitHubConfig `json:"github,omitempty"`
-	Vault  *VaultConfig  `json:"vault,omitempty"`
+	GitHub       *GitHubConfig       `json:"github,omitempty"`
+	Vault        *VaultConfig        `json:"vault,omitempty"`
+	ControlPlane *ControlPlaneConfig `json:"controlPlane,omitempty"`
+}
+
+type ControlPlaneConfig struct {
+	URL      string `json:"url"`
+	TokenEnv string `json:"tokenEnv"`
 }
 
 type GitHubConfig struct {
@@ -188,12 +195,12 @@ func (config Config) Validate() error {
 			return fmt.Errorf("target %s requires explicit evidence", target.ID)
 		}
 		if target.GitHubRepository != "" {
-			if !repositoryPattern.MatchString(target.GitHubRepository) || config.Integrations.GitHub == nil {
+			if !repositoryPattern.MatchString(target.GitHubRepository) || !branchPattern.MatchString(target.BaseBranch) || (config.Integrations.GitHub == nil && config.Integrations.ControlPlane == nil) {
 				return fmt.Errorf("target %s has invalid GitHub repository or missing integration", target.ID)
 			}
 		}
 		for _, name := range target.VaultDatabaseRotations {
-			if !resourcePattern.MatchString(name) || config.Integrations.Vault == nil {
+			if !resourcePattern.MatchString(name) || (config.Integrations.Vault == nil && config.Integrations.ControlPlane == nil) {
 				return fmt.Errorf("target %s has invalid Vault database rotation or missing integration", target.ID)
 			}
 		}
@@ -211,6 +218,20 @@ func (config Config) Validate() error {
 			return errors.New("Vault integration requires a tokenEnv name")
 		}
 		if err := validateHTTPS(config.Integrations.Vault.Address); err != nil {
+			return err
+		}
+	}
+	if config.Integrations.ControlPlane != nil {
+		if config.Mode != "propose" {
+			return errors.New("commercial control plane integration requires propose mode")
+		}
+		if config.Integrations.GitHub != nil || config.Integrations.Vault != nil {
+			return errors.New("commercial control plane and local write integrations cannot be enabled together")
+		}
+		if !environmentPattern.MatchString(config.Integrations.ControlPlane.TokenEnv) {
+			return errors.New("control plane integration requires a tokenEnv name")
+		}
+		if err := validateHTTPS(config.Integrations.ControlPlane.URL); err != nil {
 			return err
 		}
 	}
