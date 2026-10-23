@@ -5,7 +5,7 @@ description: Monitor authoritative advisories and run narrowly authorized remedi
 
 PatchRover's self-hosted agent continuously polls allowlisted structured sources, reassesses explicit assets with signed Response Packs, and creates an auditable action queue.
 
-## Three policy modes
+## Two modes
 
 - `observe` records evidence and suggested actions without an approval queue.
 - `propose` queues exact actions for human approval.
@@ -25,6 +25,12 @@ patchrover agent review --config examples/agent.propose.json --action ACTION_ID
 ```
 
 The review command shows the exact change and requires the operator to type `yes`. Any other answer cancels without approval. Tokens are never written to configuration or state. Repository edits fail if the current file no longer matches the SHA-256 content assessed by PatchRover. Approval is recorded in the hash-chained audit log before the one approved action runs, and tampering prevents the agent from loading it.
+
+## Team approval inbox
+
+Commercial customers can send a bounded proposal to the private approval inbox instead of configuring local write credentials in the monitoring agent. The submission contains the exact action, Pack and Trail references, and change metadata needed for review. Repository contents, Kubernetes Secrets, GitHub tokens, Vault tokens, and human passwords are never sent.
+
+After a person approves the exact action, a customer-hosted runner verifies its signed approval and applies only that fix. It never merges or deploys the result.
 
 ## Intelligence sources
 
