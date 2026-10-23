@@ -63,37 +63,60 @@ func (runner Runner) RunOnce(ctx context.Context, config Config) (RunReport, err
 		return RunReport{}, err
 	}
 	report := RunReport{}
+	runAt := time.Now().UTC().Format(time.RFC3339)
 	advisories := map[string]Advisory{}
 	for _, existing := range state.Advisories {
 		advisories[existing.Source+"\x00"+existing.ID] = existing
 	}
+	sourceStatuses := map[string]SourceStatus{}
+	for _, existing := range state.Sources {
+		sourceStatuses[existing.ID] = existing
+	}
 	for _, source := range config.Sources {
 		report.SourcesChecked++
+		status := sourceStatuses[source.ID]
+		status.ID = source.ID
+		status.LastAttemptAt = runAt
 		items, fetchErr := runner.FeedClient.Fetch(ctx, source)
 		if fetchErr != nil {
 			report.SourceErrors++
-			state.AppendAudit("source_error", "", source.ID+": "+safeError(fetchErr))
+			status.LastError = safeError(fetchErr)
+			sourceStatuses[source.ID] = status
+			state.AppendAudit("source_error", "", source.ID+": "+status.LastError)
 			continue
 		}
+		status.LastSuccessAt = runAt
+		status.AdvisoryCount = len(items)
+		status.LastError = ""
+		sourceStatuses[source.ID] = status
 		for _, item := range items {
-			advisories[item.Source+"\x00"+item.ID] = item
+			key := item.Source + "\x00" + item.ID
+			if existing, exists := advisories[key]; exists && existing.ObservedAt != "" {
+				item.ObservedAt = existing.ObservedAt
+			} else {
+				item.ObservedAt = runAt
+			}
+			advisories[key] = item
 		}
 	}
-	state.Advisories = state.Advisories[:0]
+	state.Sources = state.Sources[:0]
+	for _, source := range config.Sources {
+		state.Sources = append(state.Sources, sourceStatuses[source.ID])
+	}
+	sort.Slice(state.Sources, func(i, j int) bool { return state.Sources[i].ID < state.Sources[j].ID })
+	allAdvisories := make([]Advisory, 0, len(advisories))
 	for _, item := range advisories {
-		state.Advisories = append(state.Advisories, item)
+		allAdvisories = append(allAdvisories, item)
 	}
-	sort.Slice(state.Advisories, func(i, j int) bool {
-		if state.Advisories[i].Source == state.Advisories[j].Source {
-			return state.Advisories[i].ID < state.Advisories[j].ID
-		}
-		return state.Advisories[i].Source < state.Advisories[j].Source
-	})
-	if len(state.Advisories) > 5000 {
-		state.Advisories = append([]Advisory(nil), state.Advisories[:5000]...)
-		state.AppendAudit("advisory_limit", "", "retained first 5000 source and advisory IDs")
+	state.Advisories = retainNewestAdvisories(allAdvisories, 5000)
+	if len(allAdvisories) > len(state.Advisories) {
+		state.AppendAudit("advisory_limit", "", fmt.Sprintf("retained the %d newest advisories", len(state.Advisories)))
+	}
+	if len(state.Actions) > maxStateActions {
+		return report, fmt.Errorf("agent action state exceeds the hard limit of %d", maxStateActions)
 	}
 	results := make([]TargetResult, 0, len(config.Targets))
+	var candidateActions []Action
 	for _, target := range config.Targets {
 		report.TargetsChecked++
 		result, actions, assessErr := assessTarget(target, config.Mode)
@@ -107,17 +130,31 @@ func (runner Runner) RunOnce(ctx context.Context, config Config) (RunReport, err
 		if config.Integrations.ControlPlane != nil {
 			actions = splitCommercialActions(actions)
 		}
-		for _, action := range actions {
-			if report.ActionsCreated >= config.Policy.MaxActionsPerRun {
-				state.AppendAudit("action_limit", "", fmt.Sprintf("deferred actions after reaching per-run limit %d", config.Policy.MaxActionsPerRun))
-				break
-			}
-			if config.Integrations.ControlPlane != nil && action.Status == "pending" {
-				action.Status = "submission_pending"
-			}
-			if state.addAction(action) {
-				report.ActionsCreated++
-			}
+		candidateActions = append(candidateActions, actions...)
+	}
+	currentObservations := map[string]bool{}
+	for _, action := range candidateActions {
+		if action.Status == "observed" {
+			currentObservations[action.ID] = true
+		}
+	}
+	if removed := state.pruneStaleObservedActions(currentObservations); removed > 0 {
+		state.AppendAudit("observations_refreshed", "", fmt.Sprintf("removed %d stale read-only observations after reassessment", removed))
+	}
+	for _, action := range candidateActions {
+		if report.ActionsCreated >= config.Policy.MaxActionsPerRun {
+			state.AppendAudit("action_limit", "", fmt.Sprintf("deferred actions after reaching per-run limit %d", config.Policy.MaxActionsPerRun))
+			break
+		}
+		if config.Integrations.ControlPlane != nil && action.Status == "pending" {
+			action.Status = "submission_pending"
+		}
+		added, addErr := state.addAction(action)
+		if addErr != nil {
+			return report, addErr
+		}
+		if added {
+			report.ActionsCreated++
 		}
 	}
 	state.Targets = results
@@ -158,6 +195,39 @@ func (runner Runner) RunOnce(ctx context.Context, config Config) (RunReport, err
 	return report, nil
 }
 
+func retainNewestAdvisories(input []Advisory, limit int) []Advisory {
+	if limit <= 0 {
+		return nil
+	}
+	output := append([]Advisory(nil), input...)
+	sort.Slice(output, func(i, j int) bool {
+		left := advisoryTime(output[i])
+		right := advisoryTime(output[j])
+		if !left.Equal(right) {
+			return left.After(right)
+		}
+		if output[i].Source != output[j].Source {
+			return output[i].Source < output[j].Source
+		}
+		return output[i].ID < output[j].ID
+	})
+	if len(output) > limit {
+		output = output[:limit]
+	}
+	return output
+}
+
+func advisoryTime(item Advisory) time.Time {
+	for _, value := range []string{item.PublishedAt, item.ObservedAt} {
+		for _, layout := range []string{time.RFC3339, time.RFC1123, time.RFC1123Z, time.RFC822, time.RFC822Z, "2006-01-02"} {
+			if parsed, err := time.Parse(layout, value); err == nil {
+				return parsed
+			}
+		}
+	}
+	return time.Time{}
+}
+
 func splitCommercialActions(actions []Action) []Action {
 	var output []Action
 	for _, action := range actions {
@@ -191,7 +261,7 @@ func assessTarget(target Target, mode string) (TargetResult, []Action, error) {
 	if err != nil {
 		return TargetResult{}, nil, err
 	}
-	result := TargetResult{ID: target.ID, CheckedAt: time.Now().UTC().Format(time.RFC3339), Verdict: trail.Verdict, TrailID: trail.ID, Summary: trail.Summary}
+	result := TargetResult{ID: target.ID, CheckedAt: time.Now().UTC().Format(time.RFC3339), Verdict: trail.Verdict, Drift: trail.Drift, TrailID: trail.ID, Summary: trail.Summary}
 	if trail.Verdict != model.VerdictAffected {
 		return result, nil, nil
 	}

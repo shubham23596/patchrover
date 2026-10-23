@@ -25,6 +25,8 @@ patchrover agent status --state .patchrover/agent-state.json
 
 The open-source agent records evidence and sends only bounded action metadata. It never receives repository or Vault write credentials. Tokens are never written to configuration or state, and tampering prevents the agent from loading its audit state.
 
+Saved status includes each source's last attempt, last successful fetch, advisory count, and current sanitized error. Runtime drift is reported explicitly. PatchRover keeps the newest 5,000 advisories, refreshes read-only observations, and fails closed at a 5,000-action hard cap; it never silently deletes approval or submission records to create space.
+
 ## Team approval inbox
 
 Commercial customers send a bounded proposal to the private approval inbox. The submission contains the exact action, Pack and Trail references, and change metadata needed for review. Repository contents, Kubernetes Secrets, GitHub tokens, Vault tokens, and human passwords are never sent.

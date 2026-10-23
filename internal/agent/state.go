@@ -19,6 +19,8 @@ import (
 
 const StateVersion = "patchrover.dev/agent-state/v1alpha1"
 
+const maxStateActions = 5000
+
 const (
 	ActionGitHubPullRequest     = "github_pull_request"
 	ActionVaultDatabaseRotation = "vault_database_rotation"
@@ -27,10 +29,19 @@ const (
 type State struct {
 	APIVersion string         `json:"apiVersion"`
 	UpdatedAt  string         `json:"updatedAt"`
+	Sources    []SourceStatus `json:"sources,omitempty"`
 	Advisories []Advisory     `json:"advisories,omitempty"`
 	Targets    []TargetResult `json:"targets,omitempty"`
 	Actions    []Action       `json:"actions,omitempty"`
 	Audit      []AuditEntry   `json:"audit"`
+}
+
+type SourceStatus struct {
+	ID            string `json:"id"`
+	LastAttemptAt string `json:"lastAttemptAt"`
+	LastSuccessAt string `json:"lastSuccessAt,omitempty"`
+	AdvisoryCount int    `json:"advisoryCount"`
+	LastError     string `json:"lastError,omitempty"`
 }
 
 type Advisory struct {
@@ -38,6 +49,7 @@ type Advisory struct {
 	Title       string `json:"title"`
 	Severity    string `json:"severity,omitempty"`
 	PublishedAt string `json:"publishedAt,omitempty"`
+	ObservedAt  string `json:"observedAt,omitempty"`
 	Source      string `json:"source"`
 	URL         string `json:"url,omitempty"`
 }
@@ -46,6 +58,7 @@ type TargetResult struct {
 	ID        string        `json:"id"`
 	CheckedAt string        `json:"checkedAt"`
 	Verdict   model.Verdict `json:"verdict"`
+	Drift     bool          `json:"drift"`
 	TrailID   string        `json:"trailId,omitempty"`
 	Summary   string        `json:"summary"`
 }
@@ -147,7 +160,22 @@ func SaveState(path string, state State) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	return os.Rename(temporaryName, path)
+	if err := os.Rename(temporaryName, path); err != nil {
+		return err
+	}
+	// #nosec G304 -- parent is derived from the operator-configured state path and is opened only for directory fsync.
+	directory, err := os.Open(parent)
+	if err != nil {
+		return fmt.Errorf("open state directory for sync: %w", err)
+	}
+	if err := directory.Sync(); err != nil {
+		_ = directory.Close()
+		return fmt.Errorf("sync state directory: %w", err)
+	}
+	if err := directory.Close(); err != nil {
+		return fmt.Errorf("close state directory after sync: %w", err)
+	}
+	return nil
 }
 
 func (state *State) AppendAudit(event, actionID, detail string) {
@@ -194,14 +222,31 @@ func actionID(parts ...string) string {
 	return hex.EncodeToString(sum[:16])
 }
 
-func (state *State) addAction(action Action) bool {
+func (state *State) addAction(action Action) (bool, error) {
 	for _, existing := range state.Actions {
 		if existing.ID == action.ID {
-			return false
+			return false, nil
 		}
+	}
+	if len(state.Actions) >= maxStateActions {
+		return false, fmt.Errorf("agent action state reached the hard limit of %d; operator intervention is required before accepting new actions", maxStateActions)
 	}
 	state.Actions = append(state.Actions, action)
 	sort.Slice(state.Actions, func(i, j int) bool { return state.Actions[i].ID < state.Actions[j].ID })
 	state.AppendAudit("action_created", action.ID, action.Type+" for "+action.TargetID)
-	return true
+	return true, nil
+}
+
+func (state *State) pruneStaleObservedActions(current map[string]bool) int {
+	kept := state.Actions[:0]
+	removed := 0
+	for _, action := range state.Actions {
+		if action.Status == "observed" && !current[action.ID] {
+			removed++
+			continue
+		}
+		kept = append(kept, action)
+	}
+	state.Actions = kept
+	return removed
 }

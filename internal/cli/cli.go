@@ -106,9 +106,20 @@ func runAgent(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "load agent state:", err)
 			return 1
 		}
-		fmt.Fprintf(stdout, "UPDATED %s\nADVISORIES %d\nTARGETS %d\nACTIONS %d\n", state.UpdatedAt, len(state.Advisories), len(state.Targets), len(state.Actions))
+		fmt.Fprintf(stdout, "UPDATED %s\nSOURCES %d\nADVISORIES %d\nTARGETS %d\nACTIONS %d\n", state.UpdatedAt, len(state.Sources), len(state.Advisories), len(state.Targets), len(state.Actions))
+		for _, source := range state.Sources {
+			health := "healthy"
+			if source.LastError != "" {
+				health = "error"
+			}
+			fmt.Fprintf(stdout, "SOURCE %s health=%s last_success=%s advisories=%d", source.ID, health, source.LastSuccessAt, source.AdvisoryCount)
+			if source.LastError != "" {
+				fmt.Fprintf(stdout, " error=%q", source.LastError)
+			}
+			fmt.Fprintln(stdout)
+		}
 		for _, target := range state.Targets {
-			fmt.Fprintf(stdout, "TARGET %s verdict=%s trail=%s\n", target.ID, target.Verdict, target.TrailID)
+			fmt.Fprintf(stdout, "TARGET %s verdict=%s drift=%t trail=%s\n", target.ID, target.Verdict, target.Drift, target.TrailID)
 		}
 		for _, action := range state.Actions {
 			fmt.Fprintf(stdout, "ACTION %s type=%s status=%s target=%s\n", action.ID, action.Type, action.Status, action.TargetID)

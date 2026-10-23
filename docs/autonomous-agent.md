@@ -26,6 +26,8 @@ patchrover agent status --state .patchrover/agent-state.json
 
 The public agent sends a bounded proposal; it never receives repository or Vault write credentials. A person reviews the exact action in the commercial inbox. The customer-hosted commercial runner verifies the signed approval before applying it. Token values are read from named environment variables and are never written to configuration or state. Any edit to an existing audit entry causes loading to fail.
 
+`agent status` persists source health across restarts: last attempt, last successful fetch, advisory count, and a sanitized current error. It also reports source-to-runtime drift explicitly. The state writer syncs both the file and its directory before reporting success. It keeps the 5,000 newest advisories, refreshes read-only observations each cycle, and refuses new actions at a 5,000-action hard cap. Approval and submission records are never silently discarded to make room.
+
 ## Commercial approval inbox
 
 Commercial customers configure one control-plane connection:
@@ -51,7 +53,7 @@ The current release supports:
 - GitHub Global Security Advisories JSON;
 - allowlisted RSS or Atom feeds from official publishers.
 
-Every endpoint must be HTTPS and its exact hostname must appear in `allowedHosts`. Response bodies are size-limited, requests time out, redirects remain subject to the standard HTTP client, and no feed content is executed.
+Every endpoint must be HTTPS and its exact hostname must appear in `allowedHosts`. Response bodies are size-limited, requests time out, redirects may not leave the same HTTPS hostname, and no feed content is executed.
 
 ## Repository safety
 

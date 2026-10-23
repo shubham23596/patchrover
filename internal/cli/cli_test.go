@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/shubham23596/patchrover/internal/agent"
+	"github.com/shubham23596/patchrover/internal/model"
 )
 
 func TestPackValidateIncludesGoldenFixtures(t *testing.T) {
@@ -26,6 +29,25 @@ func TestAgentReviewCommandIsNotAvailableInOpenSourceBinary(t *testing.T) {
 	code := RunWithInput([]string{"agent", "review"}, strings.NewReader("yes\n"), &stdout, &stderr)
 	if code != 1 || !strings.Contains(stderr.String(), "agent run|status") {
 		t.Fatalf("removed write command returned code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestAgentStatusShowsSourceHealthAndRuntimeDrift(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	state := agent.NewState()
+	state.Sources = []agent.SourceStatus{{ID: "github", LastAttemptAt: "2026-10-23T10:00:00Z", LastSuccessAt: "2026-10-23T09:00:00Z", AdvisoryCount: 12, LastError: "HTTP 503"}}
+	state.Targets = []agent.TargetResult{{ID: "api", Verdict: model.VerdictAffected, Drift: true, TrailID: "trail-1"}}
+	state.AppendAudit("test", "", "status fixture")
+	if err := agent.SaveState(path, state); err != nil {
+		t.Fatal(err)
+	}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	if code := Run([]string{"agent", "status", "--state", path}, &stdout, &stderr); code != 0 {
+		t.Fatalf("status failed code=%d stderr=%q", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "SOURCE github health=error") || !strings.Contains(stdout.String(), "TARGET api verdict=affected drift=true") {
+		t.Fatalf("source health or drift missing from status:\n%s", stdout.String())
 	}
 }
 
