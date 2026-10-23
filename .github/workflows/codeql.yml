@@ -25,7 +25,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@793b778da9c9275a0f276522b27cb5fc14bba279
+        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370
         with:
           languages: ${{ matrix.language }}
       - name: Autobuild
