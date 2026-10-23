@@ -205,24 +205,3 @@ func (state *State) addAction(action Action) bool {
 	state.AppendAudit("action_created", action.ID, action.Type+" for "+action.TargetID)
 	return true
 }
-
-func Approve(statePath, id string) error {
-	state, err := LoadState(statePath)
-	if err != nil {
-		return err
-	}
-	for index := range state.Actions {
-		if state.Actions[index].ID != id {
-			continue
-		}
-		if state.Actions[index].Status != "pending" && state.Actions[index].Status != "failed" {
-			return fmt.Errorf("action %s cannot be approved from status %s", id, state.Actions[index].Status)
-		}
-		state.Actions[index].Status = "approved"
-		state.Actions[index].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-		state.Actions[index].Error = ""
-		state.AppendAudit("action_approved", id, "human approval recorded")
-		return SaveState(statePath, state)
-	}
-	return fmt.Errorf("action %s was not found", id)
-}

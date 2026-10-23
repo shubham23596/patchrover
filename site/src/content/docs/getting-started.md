@@ -3,14 +3,14 @@ title: Getting started
 description: Build PatchRover, assess an approved target, and review a proposed fix.
 ---
 
-PatchRover is a local-first incident-response agent. Collection is read-only. In `propose` mode, it finds a supported issue, prepares one exact action, asks for human approval, and only then opens a bounded pull request or rotates an allowlisted Vault database credential. It never merges, deploys, changes workloads, or changes human passwords.
+PatchRover is a local-first incident-response agent. The open-source binary is read-only. In `propose` mode, it finds a supported issue and prepares one exact action. Commercial customers can send that action to a team inbox for approval and customer-runner execution. PatchRover never merges, deploys, changes workloads, or changes human passwords.
 
 ## Requirements
 
 - Go 1.27 or later
 - macOS or Linux on x86-64 or ARM64
 - `kubectl` only when you explicitly use `--kube-context`
-- A narrowly scoped GitHub or Vault token only when you approve a real action
+- A commercial control-plane submission token only when using the team approval inbox
 
 ## Build PatchRover
 
@@ -32,17 +32,16 @@ bin/patchrover assess \
 
 An affected assessment exits with status `2`; an unknown assessment exits with `3`. This lets CI distinguish a deterministic finding from an operational error.
 
-## Ask for approval before fixing
+## Send a fix for team approval
 
 Copy `examples/agent.propose.json` and replace its example paths, repository, and provider endpoints with resources you are authorized to use. Keep `mode` set to `propose`.
 
 ```sh
 bin/patchrover agent run --config examples/agent.propose.json --once
 bin/patchrover agent status --state .patchrover/agent-state.json
-bin/patchrover agent review --config examples/agent.propose.json --action ACTION_ID
 ```
 
-The review command shows the exact action and asks `Apply this exact fix? Type yes to approve:`. Any other answer cancels without changing the approval state. A successful approval is written to the audit chain before PatchRover applies that one action.
+The public agent remains read-only. It submits only bounded action metadata to the commercial inbox. A person approves or rejects the exact action there; only a signed customer-hosted commercial runner can apply it.
 
 ## Review before real use
 

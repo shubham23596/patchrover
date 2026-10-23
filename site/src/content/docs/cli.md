@@ -40,11 +40,10 @@ Validates schema, expiry, review state, source URLs, deterministic matcher rules
 
 ## `patchrover agent`
 
-- `agent run --config <file> [--once]` monitors sources and targets, then queues proposed actions or executes actions that already have a recorded approval.
+- `agent run --config <file> [--once]` monitors sources and targets, then records proposed actions or submits them to the commercial approval inbox.
 - `agent status --state <file>` reports target verdicts and action states.
-- `agent review --config <file> --action <id>` shows one exact proposed change, requires the operator to type `yes`, records approval, and applies only that action.
 
-The agent supports `observe` and `propose` modes. Every write action requires an exact recorded approval. Its only write capabilities are GitHub pull requests and exact HashiCorp Vault database root rotations; it has no human-password, merge, deployment, or arbitrary-shell action.
+The agent supports `observe` and `propose` modes. The open-source binary has no write capability. Commercial customer-hosted runners can open one approved GitHub pull request or rotate one approved HashiCorp Vault database root credential. They have no human-password, merge, deployment, or arbitrary-shell action.
 
 ## Exit codes
 

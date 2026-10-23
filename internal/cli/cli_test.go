@@ -2,13 +2,10 @@ package cli
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/shubham23596/patchrover/internal/agent"
 )
 
 func TestPackValidateIncludesGoldenFixtures(t *testing.T) {
@@ -23,52 +20,12 @@ func TestPackValidateIncludesGoldenFixtures(t *testing.T) {
 	}
 }
 
-func TestAgentReviewRequiresTypedYes(t *testing.T) {
-	directory := t.TempDir()
-	statePath := filepath.Join(directory, "state.json")
-	state := agent.NewState()
-	state.Actions = []agent.Action{{
-		ID: "action-123", Type: agent.ActionGitHubPullRequest, TargetID: "service", PackID: "incident-pack",
-		Status: "pending", Repository: "acme/service", BaseBranch: "main",
-	}}
-	if err := agent.SaveState(statePath, state); err != nil {
-		t.Fatal(err)
-	}
-	configPath := filepath.Join(directory, "agent.json")
-	config := map[string]any{
-		"apiVersion":   agent.ConfigVersion,
-		"mode":         "propose",
-		"interval":     "5m",
-		"statePath":    statePath,
-		"allowedHosts": []string{},
-		"targets": []any{map[string]any{
-			"id": "service", "pack": "unused-pack", "evidence": map[string]any{"imageReference": "example:v1"},
-		}},
-		"policy": map[string]any{"maxActionsPerRun": 1},
-	}
-	data, err := json.Marshal(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(configPath, data, 0o600); err != nil {
-		t.Fatal(err)
-	}
-
+func TestAgentReviewCommandIsNotAvailableInOpenSourceBinary(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	code := RunWithInput([]string{"agent", "review", "--config", configPath, "--action", "action-123"}, strings.NewReader("no\n"), &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("review failed: %s", stderr.String())
-	}
-	if !strings.Contains(stdout.String(), "FIX REQUIRES APPROVAL") || !strings.Contains(stdout.String(), "CANCELLED") {
-		t.Fatalf("review did not show and cancel the action: %s", stdout.String())
-	}
-	state, err = agent.LoadState(statePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if state.Actions[0].Status != "pending" {
-		t.Fatalf("cancelled review changed action status to %q", state.Actions[0].Status)
+	code := RunWithInput([]string{"agent", "review"}, strings.NewReader("yes\n"), &stdout, &stderr)
+	if code != 1 || !strings.Contains(stderr.String(), "agent run|status") {
+		t.Fatalf("removed write command returned code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }
 

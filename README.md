@@ -10,8 +10,8 @@ PatchRover is intentionally conservative:
 - missing or contradictory evidence remains `unknown`;
 - response packs cannot execute arbitrary commands;
 - Kubernetes collection is read-only and requires an explicit context;
-- repository remediation is either proposed or opened as a bounded pull request under explicit policy; PatchRover never merges or deploys it;
-- machine credentials can be rotated only through typed, allowlisted provider integrations; human passwords are out of scope;
+- the open-source agent proposes bounded remediation but has no repository or credential write integration;
+- commercial runners can open an approved pull request or rotate an approved machine credential through typed integrations; human passwords are out of scope;
 - receipts redact internal identifiers by default;
 - no model, account, cloud service, or API key is required for the core workflow.
 
@@ -28,7 +28,6 @@ patchrover receipt verify <receipt.json>
 patchrover pack validate <pack-directory-or-json>
 patchrover agent run --config <agent.json> [--once]
 patchrover agent status --state <state.json>
-patchrover agent review --config <agent.json> --action <action-id>
 ```
 
 Commercial organizations can configure the same agent to submit bounded proposals to the private team approval inbox. Repository contents and GitHub/Vault credentials remain inside the customer's environment; only an approved action can be leased by the customer-hosted runner.
@@ -63,9 +62,9 @@ Optional proposal explanation is off by default. `--ai-provider ollama --ai-mode
 
 ## Approval-first agent
 
-The self-hosted controller monitors allowlisted CISA KEV, GitHub Advisory, and official RSS/Atom feeds; continuously reassesses explicit targets; and prepares a bounded dependency-remediation pull request or an explicitly named HashiCorp Vault database root credential rotation.
+The self-hosted controller monitors allowlisted CISA KEV, GitHub Advisory, and official RSS/Atom feeds; continuously reassesses explicit targets; and prepares a bounded pull-request or machine-credential-rotation proposal.
 
-Use `propose` mode for remediation. PatchRover records a pending action, shows the exact target and proposed change, asks the operator to type `yes`, records that approval in the audit chain, and applies only that action. There is no automatic-approval mode.
+Use `propose` mode to prepare bounded actions. The open-source binary remains read-only: it does not accept GitHub or Vault write credentials and cannot execute a fix. Commercial customers send the exact action to the team approval inbox; after a person approves it, a signed customer-hosted runner can apply only that action. There is no automatic-approval mode.
 
 PatchRover has no arbitrary shell tool, no human-password action, no merge action, and no production-deployment action. Repository content must still match the exact SHA-256 observed during assessment or an automatic edit fails closed. See the [autonomous-agent guide](docs/autonomous-agent.md) and [example configuration](examples/agent.propose.json).
 
@@ -81,7 +80,7 @@ Packs are JSON rather than executable plugins. Unknown fields are rejected, HTTP
 ## Repository layout
 
 - `cmd/patchrover`: CLI entry point.
-- `internal`: pack validation, evidence collectors, assessment, proposals, receipts, and approval-controlled actions.
+- `internal`: pack validation, evidence collectors, assessment, proposals, receipts, and commercial approval submissions.
 - `packs`: signed public response packs and synthetic fixtures.
 - `site`: Astro/Starlight landing page and documentation.
 - `.github`: CI, CodeQL, release, Pages, issue forms, and dependency updates.
@@ -95,7 +94,7 @@ Production receipts are in-toto statements wrapped in a DSSE envelope with an em
 
 ## Project status
 
-PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, local proposals, approval-controlled pull requests, typed Vault database credential rotation, advisory feeds, tamper-evident agent state, signed receipt verification, CI, and the static website are implemented. Multi-maintainer key custody, live OCI registry resolution, trusted Sigstore receipt identities, external security review, and production design-partner evidence remain required before a production-readiness claim.
+PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, local proposals, commercial approval submission, advisory feeds, tamper-evident agent state, signed receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, live OCI registry resolution, trusted Sigstore receipt identities, external security review, and production design-partner evidence remain required before a production-readiness claim.
 
 GitHub Pages deploys automatically from `main`. Binary releases remain disabled until the release controls in the launch checklist are complete. The project home is `github.com/shubham23596/patchrover`, with its website served by GitHub Pages at `shubham23596.github.io/patchrover/`.
 

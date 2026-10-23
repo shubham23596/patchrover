@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -176,73 +175,6 @@ func splitCommercialActions(actions []Action) []Action {
 	return output
 }
 
-// ApplyApproved executes one exact action after a separately persisted human
-// approval. The running state is saved before the external mutation so a crash
-// cannot silently retry an action whose outcome may be unknown.
-func ApplyApproved(ctx context.Context, config Config, id string) (string, error) {
-	if err := config.Validate(); err != nil {
-		return "", err
-	}
-	state, err := LoadState(config.StatePath)
-	if err != nil {
-		return "", err
-	}
-	index := -1
-	for candidate := range state.Actions {
-		if state.Actions[candidate].ID == id {
-			index = candidate
-			break
-		}
-	}
-	if index < 0 {
-		return "", fmt.Errorf("action %s was not found", id)
-	}
-	if state.Actions[index].Status != "approved" {
-		return "", fmt.Errorf("action %s cannot run from status %s", id, state.Actions[index].Status)
-	}
-	action := state.Actions[index]
-	state.Actions[index].Status = "running"
-	state.Actions[index].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-	state.AppendAudit("action_started", id, action.Type+" after human approval")
-	if err := SaveState(config.StatePath, state); err != nil {
-		return "", err
-	}
-
-	resultURL, executeErr := executeAction(ctx, config, action)
-	state, loadErr := LoadState(config.StatePath)
-	if loadErr != nil {
-		return "", loadErr
-	}
-	index = -1
-	for candidate := range state.Actions {
-		if state.Actions[candidate].ID == id {
-			index = candidate
-			break
-		}
-	}
-	if index < 0 || state.Actions[index].Status != "running" {
-		return "", errors.New("approved action state changed while it was running")
-	}
-	state.Actions[index].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-	if executeErr != nil {
-		state.Actions[index].Status = "failed"
-		state.Actions[index].Error = safeError(executeErr)
-		state.AppendAudit("action_failed", id, action.Type+": "+safeError(executeErr))
-	} else {
-		state.Actions[index].Status = "completed"
-		state.Actions[index].ResultURL = resultURL
-		state.Actions[index].Error = ""
-		state.AppendAudit("action_completed", id, action.Type)
-	}
-	if err := SaveState(config.StatePath, state); err != nil {
-		return "", err
-	}
-	if executeErr != nil {
-		return "", executeErr
-	}
-	return resultURL, nil
-}
-
 func assessTarget(target Target, mode string) (TargetResult, []Action, error) {
 	responsePack, validation, err := pack.LoadFile(target.Pack)
 	if err != nil {
@@ -287,27 +219,6 @@ func assessTarget(target Target, mode string) (TargetResult, []Action, error) {
 		}
 	}
 	return result, actions, nil
-}
-
-func executeAction(ctx context.Context, config Config, action Action) (string, error) {
-	switch action.Type {
-	case ActionGitHubPullRequest:
-		if config.Integrations.GitHub == nil {
-			return "", errors.New("GitHub integration is not configured")
-		}
-		token := os.Getenv(config.Integrations.GitHub.TokenEnv)
-		client := GitHubClient{BaseURL: config.Integrations.GitHub.APIBase, Token: token}
-		return client.OpenRemediationPullRequest(ctx, action)
-	case ActionVaultDatabaseRotation:
-		if config.Integrations.Vault == nil {
-			return "", errors.New("Vault integration is not configured")
-		}
-		token := os.Getenv(config.Integrations.Vault.TokenEnv)
-		client := VaultClient{Address: config.Integrations.Vault.Address, Token: token, Namespace: config.Integrations.Vault.Namespace}
-		return "", client.RotateDatabaseRoot(ctx, action.VaultDatabase)
-	default:
-		return "", fmt.Errorf("unsupported action type %q", action.Type)
-	}
 }
 
 func safeError(err error) string {

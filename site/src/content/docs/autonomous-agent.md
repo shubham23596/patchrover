@@ -10,25 +10,24 @@ PatchRover's self-hosted agent continuously polls allowlisted structured sources
 - `observe` records evidence and suggested actions without an approval queue.
 - `propose` queues exact actions for human approval.
 
-There is no automatic-approval mode. Every write action requires an exact recorded approval.
+There is no automatic-approval mode. The open-source binary cannot execute a write action.
 
-The current release has only two write capabilities: open a bounded GitHub dependency-remediation pull request, and call HashiCorp Vault's database root rotation endpoint for an exact configured resource. It cannot change a human password, run arbitrary shell code, merge a pull request, deploy a workload, or restart production.
+The commercial customer-hosted runner has only two write capabilities: open a bounded GitHub dependency-remediation pull request, and call HashiCorp Vault's database root rotation endpoint for an exact configured resource. It cannot change a human password, run arbitrary shell code, merge a pull request, deploy a workload, or restart production.
 
-## Run one approval-controlled cycle
+## Run one monitoring cycle
 
-Copy `examples/agent.propose.json`, set your authorized repository and provider endpoints, then supply narrowly scoped tokens through the named environment variables.
+Copy `examples/agent.propose.json`, set your authorized repository and commercial control-plane endpoint, then supply a submission-only token through the named environment variable.
 
 ```sh
 patchrover agent run --config examples/agent.propose.json --once
 patchrover agent status --state .patchrover/agent-state.json
-patchrover agent review --config examples/agent.propose.json --action ACTION_ID
 ```
 
-The review command shows the exact change and requires the operator to type `yes`. Any other answer cancels without approval. Tokens are never written to configuration or state. Repository edits fail if the current file no longer matches the SHA-256 content assessed by PatchRover. Approval is recorded in the hash-chained audit log before the one approved action runs, and tampering prevents the agent from loading it.
+The open-source agent records evidence and sends only bounded action metadata. It never receives repository or Vault write credentials. Tokens are never written to configuration or state, and tampering prevents the agent from loading its audit state.
 
 ## Team approval inbox
 
-Commercial customers can send a bounded proposal to the private approval inbox instead of configuring local write credentials in the monitoring agent. The submission contains the exact action, Pack and Trail references, and change metadata needed for review. Repository contents, Kubernetes Secrets, GitHub tokens, Vault tokens, and human passwords are never sent.
+Commercial customers send a bounded proposal to the private approval inbox. The submission contains the exact action, Pack and Trail references, and change metadata needed for review. Repository contents, Kubernetes Secrets, GitHub tokens, Vault tokens, and human passwords are never sent.
 
 After a person approves the exact action, a customer-hosted runner verifies its signed approval and applies only that fix. It never merges or deploys the result.
 

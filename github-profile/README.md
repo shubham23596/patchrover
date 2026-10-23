@@ -10,7 +10,7 @@ PatchRover uses signed, declarative response packs and deterministic evidence to
 
 - identify affected repositories and workloads;
 - prepare bounded remediation pull requests under explicit policy;
-- rotate allowlisted machine credentials through typed integrations;
+- submit bounded fixes for team approval; commercial customer runners can rotate allowlisted machine credentials through typed integrations;
 - verify which fixed artifact is actually running;
 - create redacted, independently verifiable closure receipts.
 

@@ -16,7 +16,7 @@
 3. Deterministic matchers alone decide verdicts.
 4. Any model is an explanation/proposal boundary with no direct credentials or tools.
 5. Receipt integrity is distinct from signer identity trust.
-6. Agent actions are typed capabilities, not a shell: GitHub pull requests and exact Vault database rotations only.
+6. The open-source agent has no write capability. Commercial runner actions are typed capabilities, not a shell: GitHub pull requests and exact Vault database rotations only.
 
 ## Primary threats and controls
 

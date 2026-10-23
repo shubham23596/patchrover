@@ -1,13 +1,13 @@
 # Autonomous agent
 
-PatchRover can continuously monitor structured authoritative advisories, reassess explicitly configured assets, and carry out two bounded actions: open a dependency-remediation pull request and rotate an explicitly named HashiCorp Vault database root credential.
+PatchRover can continuously monitor structured authoritative advisories and reassess explicitly configured assets. The open-source agent proposes fixes but cannot write to a repository or credential provider. The commercial customer-hosted runner can carry out two bounded actions after approval: open a dependency-remediation pull request or rotate an explicitly named HashiCorp Vault database root credential.
 
 It does **not** change employee passwords, browse arbitrary news pages, execute pack-provided code, run a general shell, deploy workloads, merge pull requests, or restart production. Those boundaries are intentional. A security bot with unrestricted credentials would create a new high-impact attack path.
 
 ## Modes
 
 - `observe` records affected targets and suggested actions without making an approval queue.
-- `propose` creates pending actions. In the open-source workflow, an operator reviews one exact action and explicitly approves its execution. With the commercial integration, the agent submits bounded proposal metadata to the team approval inbox and a customer-hosted runner executes only after approval.
+- `propose` creates pending actions. The open-source binary can record them locally or submit bounded metadata to the commercial team approval inbox. It cannot execute them.
 
 There is no automatic-approval mode. Every write action requires an exact recorded approval.
 
@@ -15,22 +15,20 @@ Missing or conflicting evidence stays `unknown`. News without a signed Response 
 
 ## Start safely
 
-Copy [`examples/agent.propose.json`](../examples/agent.propose.json), replace the example repository and Vault address, and keep `mode` set to `propose` until the evidence and provider permissions have been reviewed.
+Copy [`examples/agent.propose.json`](../examples/agent.propose.json), replace the example repository and control-plane address, and keep `mode` set to `propose`.
 
 ```sh
-export PATCHROVER_GITHUB_TOKEN='a fine-grained token scoped to contents and pull requests'
-export PATCHROVER_VAULT_TOKEN='a narrowly scoped token for database/rotate-root on one named connection'
+export PATCHROVER_CONTROL_PLANE_TOKEN='a submission-only commercial agent token'
 
 patchrover agent run --config examples/agent.propose.json --once
 patchrover agent status --state .patchrover/agent-state.json
-patchrover agent review --config examples/agent.propose.json --action ACTION_ID
 ```
 
-The review command shows the exact action and asks the operator to type `yes`. Any other answer cancels. Approval is written to the hash-chained audit log before that one action runs. Token values are read from the named environment variables and are never written to configuration or state. Any edit to an existing audit entry causes loading to fail.
+The public agent sends a bounded proposal; it never receives repository or Vault write credentials. A person reviews the exact action in the commercial inbox. The customer-hosted commercial runner verifies the signed approval before applying it. Token values are read from named environment variables and are never written to configuration or state. Any edit to an existing audit entry causes loading to fail.
 
 ## Commercial approval inbox
 
-Commercial customers replace the local `github` and `vault` write integrations with one control-plane connection:
+Commercial customers configure one control-plane connection:
 
 ```json
 {
@@ -57,7 +55,7 @@ Every endpoint must be HTTPS and its exact hostname must appear in `allowedHosts
 
 ## Repository safety
 
-PatchRover reads a specific file from the target repository and confirms its SHA-256 content matches the version that was assessed. It performs one line-specific dependency replacement, creates a dedicated branch, and opens a pull request. If the file changed after assessment, the action fails closed. It never merges the pull request.
+The commercial runner reads one specific file and confirms its SHA-256 content matches the approved version. It performs one line-specific dependency replacement, creates a dedicated branch, and opens a pull request. If the file changed after assessment, the action fails closed. It never merges the pull request.
 
 ## Machine credential safety
 
