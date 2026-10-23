@@ -25,9 +25,22 @@ async function executable(candidates) {
 
 function run(command, args, options = {}) {
   return new Promise((accept, reject) => {
-    const child = spawn(command, args, { stdio: options.stdio || 'inherit', ...options });
-    child.once('error', reject);
-    child.once('exit', (code) => code === 0 ? accept() : reject(new Error(`${command} exited with ${code}`)));
+    const { timeoutMs = 120_000, ...spawnOptions } = options;
+    const child = spawn(command, args, { stdio: spawnOptions.stdio || 'inherit', ...spawnOptions });
+    let settled = false;
+    const finish = (callback) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      callback();
+    };
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      setTimeout(() => child.kill('SIGKILL'), 5_000).unref();
+      finish(() => reject(new Error(`${command} exceeded ${timeoutMs}ms`)));
+    }, timeoutMs);
+    child.once('error', (error) => finish(() => reject(error)));
+    child.once('exit', (code) => finish(() => code === 0 ? accept() : reject(new Error(`${command} exited with ${code}`))));
   });
 }
 
@@ -90,4 +103,9 @@ try {
   if (failed) throw new Error('one or more Lighthouse median scores are below 95');
 } finally {
   server.kill('SIGTERM');
+  try {
+    await run('npm', ['run', 'preview', '--', 'stop'], { stdio: 'ignore', timeoutMs: 15_000 });
+  } catch {
+    // The preview process may already be gone. CI will still terminate it with the job.
+  }
 }
