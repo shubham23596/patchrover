@@ -16,7 +16,7 @@ The commercial customer-hosted runner has only two write capabilities: open a bo
 
 ## Run one monitoring cycle
 
-Copy `examples/agent.propose.json`, set your authorized repository and commercial control-plane endpoint, then supply a submission-only token through the named environment variable.
+Copy `examples/agent.propose.json`, set your authorized repository and commercial control-plane endpoint, then supply a token with exact `submit` scope through the named environment variable. That token cannot lease or complete a fix; the customer runner uses a separate `execute` token that cannot submit findings.
 
 ```sh
 patchrover agent run --config examples/agent.propose.json --once

@@ -18,7 +18,7 @@ Missing or conflicting evidence stays `unknown`. News without a signed Response 
 Copy [`examples/agent.propose.json`](../examples/agent.propose.json), replace the example repository and control-plane address, and keep `mode` set to `propose`.
 
 ```sh
-export PATCHROVER_CONTROL_PLANE_TOKEN='a submission-only commercial agent token'
+export PATCHROVER_CONTROL_PLANE_TOKEN='a commercial agent token with exact submit scope'
 
 patchrover agent run --config examples/agent.propose.json --once
 patchrover agent status --state .patchrover/agent-state.json
@@ -41,7 +41,7 @@ Commercial customers configure one control-plane connection:
 }
 ```
 
-The public agent sends only the action type, exact target, Pack ID, Trail ID, affected verdict, and the bounded change metadata needed for approval. It never sends repository contents, GitHub or Vault credentials, Kubernetes Secrets, or human passwords. Accepted actions become `submitted` locally and cannot be executed with the local review command. Repeated submission after a lost response is safe because the action ID is deterministic and the control plane is idempotent.
+The public agent sends only the action type, exact target, Pack ID, Trail ID, affected verdict, and the bounded change metadata needed for approval. It never sends repository contents, GitHub or Vault credentials, Kubernetes Secrets, or human passwords. Give it only a `submit`-scoped token: that credential cannot lease or complete a fix. The customer-hosted runner uses a different `execute`-scoped token, which cannot submit findings. Accepted actions become `submitted` locally and cannot be executed with the open-source binary. Repeated submission after a lost response is safe because the action ID is deterministic and the control plane is idempotent.
 
 ## Advisory sources
 
