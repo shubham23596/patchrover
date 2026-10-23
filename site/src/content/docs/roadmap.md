@@ -7,7 +7,7 @@ description: PatchRover's staged path from its open-source foundation to a comme
 
 - Deterministic four-state verdict interface and signed response packs.
 - Repository, SBOM, explicit OCI reference, opt-in verified registry-manifest resolution, and read-only Kubernetes evidence.
-- Local remediation proposals, approval-gated pull requests, typed Vault database credential rotation, and integrity-verifiable receipts.
+- Local remediation proposals, approval-gated pull requests, typed Vault database credential rotation, and receipts with exact-policy Sigstore verification.
 - Two public incident packs, reusable synthetic test fixtures, and a GitHub Action.
 - Local Ollama and explicit HTTPS BYOK explanation adapters that cannot alter verdicts.
 - Structured CISA KEV, GitHub Advisory, and official RSS/Atom monitoring with exact HTTPS host allowlists.
@@ -15,7 +15,7 @@ description: PatchRover's staged path from its open-source foundation to a comme
 ## Private design-partner beta
 
 - Platform-specific OCI index selection and registry-attached SBOM resolution.
-- Organization-trusted Sigstore identities and registry transparency.
+- Organization signing policy, independent key custody, recovery, and rotation rehearsal.
 - More repository and machine-credential provider integrations without adding a generic shell or password tool.
 - Cross-repository and cross-cluster trail correlation.
 

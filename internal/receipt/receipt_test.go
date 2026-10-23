@@ -4,8 +4,11 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
+	"os"
 	"strings"
 	"testing"
+
+	"github.com/sigstore/sigstore-go/pkg/testing/ca"
 
 	"github.com/shubham23596/patchrover/internal/model"
 )
@@ -80,5 +83,66 @@ func TestReceiptRejectsNonFixedTrail(t *testing.T) {
 	responsePack := model.ResponsePack{Spec: model.PackSpec{Verification: model.VerificationRules{}}}
 	if _, err := CreateWithKey(responsePack, model.Trail{Verdict: model.VerdictAffected}, "test", publicKey, privateKey); err == nil {
 		t.Fatal("affected trail unexpectedly produced a receipt")
+	}
+}
+
+func TestSigstoreIdentityPolicyBindsExactArtifactIdentityAndIssuer(t *testing.T) {
+	virtualSigstore, err := ca.NewVirtualSigstore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiptJSON := []byte(`{"receipt":"exact bytes"}`)
+	identity := "security@patchrover.example"
+	issuer := "https://issuer.patchrover.example"
+	entity, err := virtualSigstore.Sign(identity, issuer, receiptJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifySigstoreEntity(receiptJSON, entity, virtualSigstore, identity, issuer, false); err != nil {
+		t.Fatalf("valid Sigstore identity failed: %v", err)
+	}
+	if err := verifySigstoreEntity([]byte(`{"receipt":"changed bytes"}`), entity, virtualSigstore, identity, issuer, false); err == nil {
+		t.Fatal("Sigstore bundle unexpectedly verified different receipt bytes")
+	}
+	if err := verifySigstoreEntity(receiptJSON, entity, virtualSigstore, "other@patchrover.example", issuer, false); err == nil {
+		t.Fatal("Sigstore bundle unexpectedly verified a different identity")
+	}
+	if err := verifySigstoreEntity(receiptJSON, entity, virtualSigstore, identity, "https://other-issuer.example", false); err == nil {
+		t.Fatal("Sigstore bundle unexpectedly verified a different issuer")
+	}
+}
+
+func TestSigstorePolicyRequiresOneExplicitTrustRoot(t *testing.T) {
+	base := SigstorePolicy{CertificateIdentity: "security@patchrover.example", CertificateOIDCIssuer: "https://issuer.example"}
+	if err := validateSigstorePolicy(base); err == nil {
+		t.Fatal("Sigstore policy unexpectedly accepted no trust root")
+	}
+	both := base
+	both.PublicGood = true
+	both.TrustedRootJSON = []byte(`{}`)
+	if err := validateSigstorePolicy(both); err == nil {
+		t.Fatal("Sigstore policy unexpectedly accepted two trust roots")
+	}
+	publicGood := base
+	publicGood.PublicGood = true
+	if err := validateSigstorePolicy(publicGood); err != nil {
+		t.Fatalf("explicit public-good trust root rejected: %v", err)
+	}
+}
+
+func TestLiveSigstorePublicGoodTrustedRoot(t *testing.T) {
+	if os.Getenv("PATCHROVER_LIVE_SIGSTORE_TUF") != "1" {
+		t.Skip("set PATCHROVER_LIVE_SIGSTORE_TUF=1 for the explicit network integration test")
+	}
+	trustedMaterial, err := loadSigstoreTrustedMaterial(SigstorePolicy{
+		CertificateIdentity:   "integration-test@patchrover.invalid",
+		CertificateOIDCIssuer: "https://issuer.patchrover.invalid",
+		PublicGood:            true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(trustedMaterial.FulcioCertificateAuthorities()) == 0 || len(trustedMaterial.RekorLogs()) == 0 || len(trustedMaterial.CTLogs()) == 0 {
+		t.Fatal("Sigstore public-good trusted root is missing Fulcio, Rekor, or CT material")
 	}
 }

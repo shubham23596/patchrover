@@ -271,11 +271,14 @@ type ReceiptBundle struct {
 }
 
 type ReceiptVerification struct {
-	IntegrityValid  bool    `json:"integrityValid"`
-	IdentityTrusted bool    `json:"identityTrusted"`
-	Identity        string  `json:"identity"`
-	ReceiptID       string  `json:"receiptId"`
-	TrailID         string  `json:"trailId"`
-	Verdict         Verdict `json:"verdict"`
-	Message         string  `json:"message"`
+	IntegrityValid       bool    `json:"integrityValid"`
+	IdentityTrusted      bool    `json:"identityTrusted"`
+	Identity             string  `json:"identity"`
+	IdentityIssuer       string  `json:"identityIssuer,omitempty"`
+	TrustProvider        string  `json:"trustProvider,omitempty"`
+	TransparencyVerified bool    `json:"transparencyVerified"`
+	ReceiptID            string  `json:"receiptId"`
+	TrailID              string  `json:"trailId"`
+	Verdict              Verdict `json:"verdict"`
+	Message              string  `json:"message"`
 }

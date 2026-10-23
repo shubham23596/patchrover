@@ -390,11 +390,25 @@ func runVerify(args []string, stdout, stderr io.Writer) int {
 }
 
 func runReceipt(args []string, stdout, stderr io.Writer) int {
-	if len(args) != 2 || args[0] != "verify" {
-		fmt.Fprintln(stderr, "usage: patchrover receipt verify <receipt.json>")
+	if len(args) == 0 || args[0] != "verify" {
+		fmt.Fprintln(stderr, "usage: patchrover receipt verify [Sigstore flags] <receipt.json>")
 		return 1
 	}
-	data, err := os.ReadFile(args[1])
+	set := flag.NewFlagSet("receipt verify", flag.ContinueOnError)
+	set.SetOutput(stderr)
+	sigstoreBundlePath := set.String("sigstore-bundle", "", "Sigstore v0.3+ bundle over the exact receipt file")
+	certificateIdentity := set.String("certificate-identity", "", "exact Fulcio certificate identity")
+	certificateIssuer := set.String("certificate-oidc-issuer", "", "exact Fulcio OIDC issuer")
+	trustedRootPath := set.String("sigstore-trusted-root", "", "offline Sigstore trusted-root JSON")
+	publicGood := set.Bool("sigstore-public-good", false, "explicitly allow Sigstore public-good TUF root refresh")
+	if err := set.Parse(args[1:]); err != nil {
+		return 1
+	}
+	if set.NArg() != 1 {
+		fmt.Fprintln(stderr, "usage: patchrover receipt verify [Sigstore flags] <receipt.json>")
+		return 1
+	}
+	data, err := readLimitedFile(set.Arg(0), 8<<20)
 	if err != nil {
 		fmt.Fprintln(stderr, "read receipt:", err)
 		return 1
@@ -411,13 +425,49 @@ func runReceipt(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "decode receipt: trailing JSON values are not allowed")
 		return 1
 	}
-	verification, err := receipt.Verify(bundle)
+	hasSigstoreOptions := *sigstoreBundlePath != "" || *certificateIdentity != "" || *certificateIssuer != "" || *trustedRootPath != "" || *publicGood
+	var verification model.ReceiptVerification
+	if !hasSigstoreOptions {
+		verification, err = receipt.Verify(bundle)
+	} else {
+		if *sigstoreBundlePath == "" || *certificateIdentity == "" || *certificateIssuer == "" {
+			fmt.Fprintln(stderr, "Sigstore verification requires --sigstore-bundle, --certificate-identity, and --certificate-oidc-issuer")
+			return 1
+		}
+		if *publicGood == (*trustedRootPath != "") {
+			fmt.Fprintln(stderr, "select exactly one trust root: --sigstore-public-good or --sigstore-trusted-root")
+			return 1
+		}
+		sigstoreBundleJSON, readErr := readLimitedFile(*sigstoreBundlePath, 8<<20)
+		if readErr != nil {
+			fmt.Fprintln(stderr, "read Sigstore bundle:", readErr)
+			return 1
+		}
+		var trustedRootJSON []byte
+		if *trustedRootPath != "" {
+			trustedRootJSON, readErr = readLimitedFile(*trustedRootPath, 4<<20)
+			if readErr != nil {
+				fmt.Fprintln(stderr, "read Sigstore trusted root:", readErr)
+				return 1
+			}
+		}
+		verification, err = receipt.VerifyWithSigstore(data, bundle, sigstoreBundleJSON, receipt.SigstorePolicy{
+			CertificateIdentity:   *certificateIdentity,
+			CertificateOIDCIssuer: *certificateIssuer,
+			TrustedRootJSON:       trustedRootJSON,
+			PublicGood:            *publicGood,
+		})
+	}
 	if err != nil {
 		fmt.Fprintln(stderr, "receipt invalid:", err)
 		return 1
 	}
 	fmt.Fprintf(stdout, "INTEGRITY valid=%t\n", verification.IntegrityValid)
 	fmt.Fprintf(stdout, "IDENTITY  trusted=%t identity=%s\n", verification.IdentityTrusted, verification.Identity)
+	if verification.IdentityIssuer != "" {
+		fmt.Fprintf(stdout, "ISSUER    %s\n", verification.IdentityIssuer)
+		fmt.Fprintf(stdout, "TRUST     provider=%s transparency=%t\n", verification.TrustProvider, verification.TransparencyVerified)
+	}
 	fmt.Fprintf(stdout, "RECEIPT   %s\n", verification.ReceiptID)
 	fmt.Fprintf(stdout, "TRAIL     %s\n", verification.TrailID)
 	fmt.Fprintf(stdout, "VERDICT   %s\n", strings.ToUpper(string(verification.Verdict)))
@@ -605,6 +655,32 @@ func writeFile(path string, data []byte, force bool) error {
 	return file.Close()
 }
 
+func readLimitedFile(path string, limit int64) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, errors.New("input must be a regular file")
+	}
+	if info.Size() > limit {
+		return nil, fmt.Errorf("input exceeds %d bytes", limit)
+	}
+	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("input exceeds %d bytes", limit)
+	}
+	return data, nil
+}
+
 func printHelp(output io.Writer) {
 	fmt.Fprintln(output, `PatchRover — Track. Fix. Prove.
 
@@ -612,7 +688,7 @@ Usage:
   patchrover assess --pack PACK --repo REPOSITORY [evidence flags]
   patchrover propose --pack PACK --trail TRAIL [--repo REPOSITORY]
   patchrover verify --pack PACK --trail TRAIL [fresh evidence flags]
-  patchrover receipt verify RECEIPT
+  patchrover receipt verify [Sigstore flags] RECEIPT
   patchrover pack validate PACK
   patchrover agent run --config agent.json [--once]
   patchrover agent status --state state.json
@@ -628,6 +704,13 @@ Evidence flags:
   --evidence FILE         explicit PatchRover evidence JSON
   --kube-context NAME     explicit read-only kubectl context
   --kube-snapshot FILE    offline Kubernetes PodList JSON
+
+Receipt trust flags:
+  --sigstore-bundle FILE          standard Sigstore v0.3+ bundle
+  --certificate-identity VALUE    exact Fulcio certificate identity
+  --certificate-oidc-issuer URL   exact Fulcio OIDC issuer
+  --sigstore-public-good          explicitly refresh the public Sigstore trust root
+  --sigstore-trusted-root FILE    offline or private Sigstore trusted-root JSON
 
 Use propose mode to prepare bounded actions. Actual fixes are released only through the commercial
 team approval inbox and signed customer-hosted runner. PatchRover never changes human passwords,

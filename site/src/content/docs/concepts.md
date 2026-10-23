@@ -24,4 +24,4 @@ The overall verdict is conservative:
 
 A **Receipt** is a redacted signed attestation of observed closure. PatchRover uses a DSSE envelope, an in-toto Statement v1, and embedded OpenVEX-compatible fixed statements.
 
-Repository, cluster, namespace, workload, pod, and source identifiers are tokenized by default. The receipt can prove that signed bytes were not modified; signer identity becomes trusted only when an external organization or Sigstore policy establishes it.
+Repository, cluster, namespace, workload, pod, and source identifiers are tokenized by default. The embedded signature proves that receipt bytes were not modified but does not establish identity. Identity is marked trusted only when a standard Sigstore v0.3+ bundle covers the exact receipt bytes and matches the operator's exact certificate identity and OIDC issuer policy, including certificate-transparency and transparency-log verification.
