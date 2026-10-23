@@ -17,6 +17,22 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - name: Require reviewed main source, semantic version, and verified tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          test "$(gh api \
+            -H 'X-GitHub-Api-Version: 2026-03-10' \
+            "/repos/${GITHUB_REPOSITORY}/immutable-releases" \
+            --jq '.enabled')" = true
+          tag_object="$(gh api "/repos/${GITHUB_REPOSITORY}/git/ref/tags/${GITHUB_REF_NAME}" --jq '.object.sha')"
+          test "$(gh api "/repos/${GITHUB_REPOSITORY}/git/tags/${tag_object}" --jq '.verification.verified')" = true
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
         with:
@@ -60,7 +76,35 @@ jobs:
         uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661
         with:
           subject-path: dist/*
-      - name: Publish immutable release candidate
+      - name: Prepare concise release notes
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          PatchRover is a local-first incident-response agent.
+
+          Included:
+          - deterministic assessments using signed response packs;
+          - repository, SBOM, OCI image, and read-only Kubernetes evidence;
+          - approval-first remediation proposals; and
+          - independently verifiable signed receipts.
+
+          PatchRover never automatically merges pull requests, deploys production workloads, or changes human passwords.
+
+          Download an archive for your platform, then verify `checksums.txt` and the GitHub build-provenance attestation before use.
+          EOF
+      - name: Publish immutable release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
+        run: |
+          release_flags=(
+            "$GITHUB_REF_NAME"
+            dist/*
+            --verify-tag
+            --title "PatchRover $GITHUB_REF_NAME"
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+          )
+          if [[ "$GITHUB_REF_NAME" == v0.* ]]; then
+            release_flags+=(--prerelease)
+          fi
+          gh release create "${release_flags[@]}"
