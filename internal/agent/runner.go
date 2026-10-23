@@ -119,7 +119,7 @@ func (runner Runner) RunOnce(ctx context.Context, config Config) (RunReport, err
 	var candidateActions []Action
 	for _, target := range config.Targets {
 		report.TargetsChecked++
-		result, actions, assessErr := assessTarget(target, config.Mode)
+		result, actions, assessErr := assessTarget(ctx, target, config.Mode)
 		if assessErr != nil {
 			result = TargetResult{ID: target.ID, CheckedAt: time.Now().UTC().Format(time.RFC3339), Verdict: model.VerdictUnknown, Summary: safeError(assessErr)}
 			state.AppendAudit("target_error", "", target.ID+": "+safeError(assessErr))
@@ -245,7 +245,7 @@ func splitCommercialActions(actions []Action) []Action {
 	return output
 }
 
-func assessTarget(target Target, mode string) (TargetResult, []Action, error) {
+func assessTarget(ctx context.Context, target Target, mode string) (TargetResult, []Action, error) {
 	responsePack, validation, err := pack.LoadFile(target.Pack)
 	if err != nil {
 		return TargetResult{}, nil, err
@@ -253,7 +253,7 @@ func assessTarget(target Target, mode string) (TargetResult, []Action, error) {
 	if err := pack.RequireTrusted(validation); err != nil {
 		return TargetResult{}, nil, err
 	}
-	evidence, err := collect.All(target.Evidence)
+	evidence, err := collect.AllContext(ctx, target.Evidence)
 	if err != nil {
 		return TargetResult{}, nil, err
 	}

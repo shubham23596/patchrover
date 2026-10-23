@@ -1,9 +1,16 @@
 package collect
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -69,5 +76,162 @@ func TestKubernetesUsesFixedReadOnlyCommand(t *testing.T) {
 	}
 	if strings.Contains(string(arguments), "exec") || strings.Contains(string(arguments), "secret") {
 		t.Fatalf("unsafe Kubernetes operation in arguments: %q", arguments)
+	}
+}
+
+func TestResolveImageReferenceUsesScopedBearerChallengeAndVerifiesDigest(t *testing.T) {
+	manifest := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":2},"layers":[]}`)
+	sum := sha256.Sum256(manifest)
+	wantDigest := "sha256:" + hex.EncodeToString(sum[:])
+	var usedHTTP2 atomic.Bool
+	var server *httptest.Server
+	server = httptest.NewUnstartedServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.ProtoMajor == 2 {
+			usedHTTP2.Store(true)
+		}
+		switch request.URL.Path {
+		case "/token":
+			if request.URL.Query().Get("scope") != "repository:org/app:pull" || request.URL.Query().Get("service") != "registry.test" {
+				t.Errorf("unexpected token query: %s", request.URL.RawQuery)
+			}
+			_ = json.NewEncoder(writer).Encode(map[string]string{"token": "scoped-read-token"})
+		case "/v2/org/app/manifests/1.2.3":
+			if request.Header.Get("Authorization") != "Bearer scoped-read-token" {
+				writer.Header().Set("WWW-Authenticate", `Bearer realm="`+server.URL+`/token",service="registry.test",scope="repository:org/app:pull"`)
+				http.Error(writer, "authorization required", http.StatusUnauthorized)
+				return
+			}
+			writer.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+			writer.Header().Set("Docker-Content-Digest", wantDigest)
+			_, _ = writer.Write(manifest)
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "https://")
+	item, err := ResolveImageReference(context.Background(), host+"/org/app:1.2.3", "image-under-test", false, RegistryOptions{AllowedHosts: []string{host}, HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.Digest != wantDigest || item.Confidence != "high" || item.Version != "1.2.3" || !strings.Contains(item.Detail, "verified") {
+		t.Fatalf("unexpected resolved image evidence: %#v", item)
+	}
+	if !usedHTTP2.Load() {
+		t.Fatal("bearer challenge path was not exercised over HTTP/2")
+	}
+}
+
+func TestResolveImageReferenceRejectsUnallowlistedNetworkAndDigestMismatch(t *testing.T) {
+	requests := 0
+	manifest := []byte(`{"schemaVersion":2}`)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requests++
+		writer.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+		writer.Header().Set("Docker-Content-Digest", "sha256:"+strings.Repeat("f", 64))
+		_, _ = writer.Write(manifest)
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "https://")
+	reference := host + "/org/app:latest"
+	if _, err := ResolveImageReference(context.Background(), reference, "image", false, RegistryOptions{AllowedHosts: []string{"registry.example"}, HTTP: server.Client()}); err == nil || !strings.Contains(err.Error(), "not explicitly allowlisted") {
+		t.Fatalf("unallowlisted registry returned %v", err)
+	}
+	if requests != 0 {
+		t.Fatalf("unallowlisted registry received %d requests", requests)
+	}
+	if _, err := ResolveImageReference(context.Background(), reference, "image", false, RegistryOptions{AllowedHosts: []string{host}, HTTP: server.Client()}); err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("digest mismatch returned %v", err)
+	}
+}
+
+func TestResolveImageReferenceAcceptsPinnedAndBareDigestsWithoutNetwork(t *testing.T) {
+	digest := "sha256:" + strings.Repeat("a", 64)
+	for _, reference := range []string{"ghcr.io/acme/app@" + digest, digest} {
+		item, err := ResolveImageReference(context.Background(), reference, "image", false, RegistryOptions{})
+		if err != nil {
+			t.Fatalf("pinned reference %q failed: %v", reference, err)
+		}
+		if item.Digest != digest || item.Confidence != "high" {
+			t.Fatalf("unexpected pinned evidence for %q: %#v", reference, item)
+		}
+	}
+}
+
+func TestResolveImageReferenceRejectsUnallowlistedAuthenticationRealm(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("WWW-Authenticate", `Bearer realm="https://auth.example/token",service="registry.test",scope="repository:org/app:pull"`)
+		http.Error(writer, "authorization required", http.StatusUnauthorized)
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "https://")
+	_, err := ResolveImageReference(context.Background(), host+"/org/app:latest", "image", false, RegistryOptions{AllowedHosts: []string{host}, HTTP: server.Client()})
+	if err == nil || !strings.Contains(err.Error(), "authentication realm") {
+		t.Fatalf("unallowlisted authentication realm returned %v", err)
+	}
+}
+
+func TestResolveImageReferenceRejectsManifestMediaTypeMismatch(t *testing.T) {
+	manifest := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json"}`)
+	sum := sha256.Sum256(manifest)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+		writer.Header().Set("Docker-Content-Digest", "sha256:"+hex.EncodeToString(sum[:]))
+		_, _ = writer.Write(manifest)
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "https://")
+	_, err := ResolveImageReference(context.Background(), host+"/org/app:latest", "image", false, RegistryOptions{AllowedHosts: []string{host}, HTTP: server.Client()})
+	if err == nil || !strings.Contains(err.Error(), "mediaType does not match") {
+		t.Fatalf("manifest media type mismatch returned %v", err)
+	}
+}
+
+func TestResolveImageReferenceUsesEnvironmentTokenWithoutPersistingIt(t *testing.T) {
+	manifest := []byte(`{"schemaVersion":2}`)
+	sum := sha256.Sum256(manifest)
+	wantDigest := "sha256:" + hex.EncodeToString(sum[:])
+	t.Setenv("PATCHROVER_TEST_REGISTRY_TOKEN", "private-read-token")
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("Authorization") != "Bearer private-read-token" {
+			http.Error(writer, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+		writer.Header().Set("Docker-Content-Digest", wantDigest)
+		_, _ = writer.Write(manifest)
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "https://")
+	item, err := ResolveImageReference(context.Background(), host+"/org/private:stable", "image", false, RegistryOptions{AllowedHosts: []string{host}, TokenEnv: "PATCHROVER_TEST_REGISTRY_TOKEN", HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.Digest != wantDigest || strings.Contains(string(encoded), "private-read-token") {
+		t.Fatalf("private registry result leaked or lost evidence: %s", encoded)
+	}
+}
+
+func TestAllRequiresResolutionForRegistrySettings(t *testing.T) {
+	_, err := All(Options{ImageReference: "ghcr.io/acme/app:latest", RegistryAllowedHosts: []string{"ghcr.io"}})
+	if err == nil || !strings.Contains(err.Error(), "require live image resolution") {
+		t.Fatalf("unused registry settings returned %v", err)
+	}
+	_, err = All(Options{RepositoryPath: t.TempDir(), ResolveImage: true})
+	if err == nil || !strings.Contains(err.Error(), "requires an explicit image") {
+		t.Fatalf("resolution without an image returned %v", err)
+	}
+}
+
+func TestDefaultRegistryClientHasABoundedTimeout(t *testing.T) {
+	client := restrictedRegistryHTTPClient(nil, map[string]bool{"registry.example": true})
+	if client.Timeout <= 0 {
+		t.Fatalf("default registry client has no timeout: %#v", client)
 	}
 }

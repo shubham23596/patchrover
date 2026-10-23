@@ -32,6 +32,19 @@ bin/patchrover assess \
 
 An affected assessment exits with status `2`; an unknown assessment exits with `3`. This lets CI distinguish a deterministic finding from an operational error.
 
+To resolve an authorized public image tag to the manifest digest observed now:
+
+```sh
+bin/patchrover assess \
+  --pack packs/litellm-1.107.0-compromise \
+  --image ghcr.io/berriai/litellm:main-latest \
+  --resolve-image \
+  --registry-host ghcr.io \
+  --out patchrover-trail.json
+```
+
+Resolution is disabled unless requested. For registries with a separate public token service, repeat `--registry-host` for that exact host. Private-registry tokens are read from a named environment variable with `--registry-token-env`; their values are never stored.
+
 ## Send a fix for team approval
 
 Copy `examples/agent.propose.json` and replace its example paths, repository, and provider endpoints with resources you are authorized to use. Keep `mode` set to `propose`.

@@ -111,7 +111,16 @@ func SuggestedFixedVersion(matcher model.Matcher, current string) string {
 }
 
 func matcherApplies(matcher model.Matcher, evidence model.EvidenceRef) bool {
-	if normalize(matcher.Name) != normalize(evidence.Name) {
+	nameMatches := normalize(matcher.Name) == normalize(evidence.Name)
+	if !nameMatches && evidence.Name == "oci-image" && evidence.Digest != "" {
+		for _, digest := range matcher.AffectedDigests {
+			if strings.EqualFold(evidence.Digest, digest) {
+				nameMatches = true
+				break
+			}
+		}
+	}
+	if !nameMatches {
 		return false
 	}
 	for _, kind := range matcher.ArtifactKinds {

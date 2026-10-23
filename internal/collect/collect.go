@@ -3,6 +3,7 @@ package collect
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -28,15 +29,28 @@ var (
 )
 
 type Options struct {
-	RepositoryPath string `json:"repositoryPath,omitempty"`
-	SBOMPath       string `json:"sbomPath,omitempty"`
-	ImageReference string `json:"imageReference,omitempty"`
-	EvidencePath   string `json:"evidencePath,omitempty"`
-	KubeContext    string `json:"kubeContext,omitempty"`
-	KubeSnapshot   string `json:"kubeSnapshot,omitempty"`
+	RepositoryPath       string   `json:"repositoryPath,omitempty"`
+	SBOMPath             string   `json:"sbomPath,omitempty"`
+	ImageReference       string   `json:"imageReference,omitempty"`
+	ResolveImage         bool     `json:"resolveImage,omitempty"`
+	RegistryAllowedHosts []string `json:"registryAllowedHosts,omitempty"`
+	RegistryTokenEnv     string   `json:"registryTokenEnv,omitempty"`
+	EvidencePath         string   `json:"evidencePath,omitempty"`
+	KubeContext          string   `json:"kubeContext,omitempty"`
+	KubeSnapshot         string   `json:"kubeSnapshot,omitempty"`
 }
 
 func All(options Options) ([]model.EvidenceRef, error) {
+	return AllContext(context.Background(), options)
+}
+
+func AllContext(ctx context.Context, options Options) ([]model.EvidenceRef, error) {
+	if options.ResolveImage && options.ImageReference == "" {
+		return nil, errors.New("live image resolution requires an explicit image reference")
+	}
+	if !options.ResolveImage && (len(options.RegistryAllowedHosts) > 0 || options.RegistryTokenEnv != "") {
+		return nil, errors.New("registry settings require live image resolution")
+	}
 	var evidence []model.EvidenceRef
 	if options.RepositoryPath != "" {
 		items, err := Repository(options.RepositoryPath)
@@ -53,7 +67,13 @@ func All(options Options) ([]model.EvidenceRef, error) {
 		evidence = append(evidence, items...)
 	}
 	if options.ImageReference != "" {
-		item, err := ImageReference(options.ImageReference, "cli-image", false)
+		var item model.EvidenceRef
+		var err error
+		if options.ResolveImage {
+			item, err = ResolveImageReference(ctx, options.ImageReference, "cli-image", false, RegistryOptions{AllowedHosts: options.RegistryAllowedHosts, TokenEnv: options.RegistryTokenEnv})
+		} else {
+			item, err = ImageReference(options.ImageReference, "cli-image", false)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -236,13 +256,17 @@ func ImageReference(reference, assetID string, runtime bool) (model.EvidenceRef,
 	if reference == "" || strings.ContainsAny(reference, "\r\n\x00") {
 		return model.EvidenceRef{}, errors.New("invalid OCI image reference")
 	}
+	if ociDigestPattern.MatchString(reference) {
+		return makeEvidence("image", assetID, "oci-reference", "oci-image", "oci-image", "", strings.ToLower(reference), "", runtime, "high", "OCI image digest"), nil
+	}
 	withoutDigest := reference
 	digest := ""
 	if before, after, found := strings.Cut(reference, "@"); found {
 		withoutDigest = before
-		if strings.HasPrefix(after, "sha256:") {
-			digest = after
+		if strings.Contains(after, "@") || !ociDigestPattern.MatchString(after) {
+			return model.EvidenceRef{}, errors.New("OCI image digest must be sha256 followed by 64 hexadecimal characters")
 		}
+		digest = strings.ToLower(after)
 	}
 	lastSlash := strings.LastIndex(withoutDigest, "/")
 	lastColon := strings.LastIndex(withoutDigest, ":")

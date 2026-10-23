@@ -41,6 +41,23 @@ func TestConfigRequiresProposeModeForCommercialControlPlane(t *testing.T) {
 	}
 }
 
+func TestConfigRequiresExplicitRegistryHostForLiveImageResolution(t *testing.T) {
+	config := validConfig(t.TempDir())
+	config.Targets[0].Evidence.ImageReference = "ghcr.io/acme/app:latest"
+	config.Targets[0].Evidence.ResolveImage = true
+	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "not explicitly allowlisted") {
+		t.Fatalf("missing registry allowlist returned %v", err)
+	}
+	config.Targets[0].Evidence.RegistryAllowedHosts = []string{"ghcr.io"}
+	if err := config.Validate(); err != nil {
+		t.Fatalf("explicit registry allowlist was rejected: %v", err)
+	}
+	config.Targets[0].Evidence.RegistryTokenEnv = "invalid-name"
+	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "registryTokenEnv") {
+		t.Fatalf("invalid registry token environment name returned %v", err)
+	}
+}
+
 func TestConfigRejectsRemovedLocalWriteIntegration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "agent.json")
 	data := []byte(`{"apiVersion":"patchrover.dev/agent/v1alpha1","mode":"propose","interval":"5m","statePath":"state.json","allowedHosts":[],"targets":[],"policy":{"maxActionsPerRun":1},"integrations":{"github":{"apiBase":"https://api.github.com","tokenEnv":"PATCHROVER_GITHUB_TOKEN"}}}`)
@@ -279,7 +296,7 @@ func TestCommercialActionsSplitMultiFileChanges(t *testing.T) {
 func TestAssessTargetReportsSourceToRuntimeDrift(t *testing.T) {
 	root := filepath.Join("..", "..", "packs", "php-2026-rce")
 	fixture := filepath.Join(root, "fixtures", "drift")
-	result, _, err := assessTarget(Target{
+	result, _, err := assessTarget(context.Background(), Target{
 		ID:   "php-runtime",
 		Pack: root,
 		Evidence: collect.Options{
