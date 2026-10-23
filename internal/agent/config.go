@@ -188,10 +188,10 @@ func (config Config) Validate() error {
 			if target.Evidence.RegistryTokenEnv != "" && !environmentPattern.MatchString(target.Evidence.RegistryTokenEnv) {
 				return fmt.Errorf("target %s has an invalid registryTokenEnv name", target.ID)
 			}
-			if err := collect.ValidateRegistryResolution(target.Evidence.ImageReference, collect.RegistryOptions{AllowedHosts: target.Evidence.RegistryAllowedHosts, TokenEnv: target.Evidence.RegistryTokenEnv}); err != nil {
+			if err := collect.ValidateRegistryResolution(target.Evidence.ImageReference, collect.RegistryOptions{AllowedHosts: target.Evidence.RegistryAllowedHosts, TokenEnv: target.Evidence.RegistryTokenEnv, Platform: target.Evidence.ImagePlatform}); err != nil {
 				return fmt.Errorf("target %s registry resolution: %w", target.ID, err)
 			}
-		} else if len(target.Evidence.RegistryAllowedHosts) > 0 || target.Evidence.RegistryTokenEnv != "" {
+		} else if len(target.Evidence.RegistryAllowedHosts) > 0 || target.Evidence.RegistryTokenEnv != "" || target.Evidence.ImagePlatform != "" {
 			return fmt.Errorf("target %s registry settings require resolveImage", target.ID)
 		}
 		if target.GitHubRepository != "" {

@@ -139,6 +139,7 @@ type evidenceFlags struct {
 	sbomPath             string
 	imageReference       string
 	resolveImage         bool
+	imagePlatform        string
 	registryAllowedHosts stringListFlag
 	registryTokenEnv     string
 	evidencePath         string
@@ -166,6 +167,7 @@ func addEvidenceFlags(set *flag.FlagSet, values *evidenceFlags) {
 	set.StringVar(&values.sbomPath, "sbom", "", "CycloneDX or SPDX JSON document")
 	set.StringVar(&values.imageReference, "image", "", "OCI image reference or digest")
 	set.BoolVar(&values.resolveImage, "resolve-image", false, "resolve an image tag to a verified registry manifest digest")
+	set.StringVar(&values.imagePlatform, "image-platform", "", "select OS/architecture[/variant] from a verified OCI image index")
 	set.Var(&values.registryAllowedHosts, "registry-host", "exact registry or token-service HTTPS host to allow; repeat as needed")
 	set.StringVar(&values.registryTokenEnv, "registry-token-env", "", "environment variable containing a registry bearer token")
 	set.StringVar(&values.evidencePath, "evidence", "", "explicit PatchRover evidence JSON")
@@ -179,6 +181,7 @@ func (values evidenceFlags) options() collect.Options {
 		SBOMPath:             values.sbomPath,
 		ImageReference:       values.imageReference,
 		ResolveImage:         values.resolveImage,
+		ImagePlatform:        values.imagePlatform,
 		RegistryAllowedHosts: append([]string(nil), values.registryAllowedHosts...),
 		RegistryTokenEnv:     values.registryTokenEnv,
 		EvidencePath:         values.evidencePath,
@@ -699,6 +702,7 @@ Evidence flags:
   --sbom FILE             CycloneDX or SPDX JSON
   --image REF             OCI image reference or digest
   --resolve-image         Resolve an image tag to a verified manifest digest
+  --image-platform P      Select OS/architecture[/variant] from a verified OCI image index
   --registry-host HOST    Exact registry or token-service HTTPS host; repeatable
   --registry-token-env E  Environment variable containing a registry bearer token
   --evidence FILE         explicit PatchRover evidence JSON

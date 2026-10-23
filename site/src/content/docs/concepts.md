@@ -11,7 +11,7 @@ Packs cannot contain executable collectors or arbitrary shell commands. The CLI 
 
 ## Trails
 
-A **Trail** is an evidence path from an advisory to an observed source dependency, built image, and running workload. Each decisive finding links to an `EvidenceRef` with source, timestamp, asset identity, collector, digest or version, runtime status, and confidence.
+A **Trail** is an evidence path from an advisory to an observed source dependency, built image, and running workload. Each decisive finding links to an `EvidenceRef` with source, timestamp, asset identity, collector, digest or version, selected OCI platform and parent index when applicable, runtime status, and confidence.
 
 The overall verdict is conservative:
 

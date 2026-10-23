@@ -13,7 +13,7 @@ There is no automatic-approval mode. Every write action requires an exact record
 
 Missing or conflicting evidence stays `unknown`. News without a signed Response Pack is recorded as advisory intelligence; it cannot produce a safe verdict or proposed fix.
 
-Targets may opt into live OCI tag resolution with `resolveImage`, `registryAllowedHosts`, and an optional `registryTokenEnv`. The collector requests only the manifest from exact HTTPS hosts, accepts only an exact repository pull-scope bearer challenge, verifies the returned body digest, and never downloads layers or writes registry data.
+Targets may opt into live OCI tag resolution with `resolveImage`, `registryAllowedHosts`, and an optional `registryTokenEnv`. Set `imagePlatform` to an explicit Linux platform such as `linux/amd64` or `linux/arm64/v8` when a tag points to a multi-platform index. The collector selects exactly one matching descriptor, verifies the index and child digest, size, media type, and bytes, and never downloads layers or writes registry data.
 
 ## Start safely
 

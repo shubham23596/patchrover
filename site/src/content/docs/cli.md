@@ -11,10 +11,11 @@ Validates a signed response pack, collects evidence, and writes a `Trail` JSON d
 - `--sbom <file>`: CycloneDX or SPDX JSON.
 - `--image <ref>`: an explicit OCI image reference or digest.
 - `--resolve-image`: resolve a mutable tag to the manifest observed now and verify its digest.
+- `--image-platform <platform>`: select one unambiguous Linux child manifest from a verified image index, such as `linux/amd64` or `linux/arm64/v8`. Digest, size, media type, and child bytes must all agree.
 - `--registry-host <host>`: exact HTTPS registry or token-service host; repeat when both are required. Docker Hub, for example, needs `registry-1.docker.io` and `auth.docker.io`.
 - `--registry-token-env <name>`: optional environment variable containing a read-only private-registry bearer token. The value is never stored.
 
-Registry resolution is off by default. It fetches only a size-limited OCI/Docker v2 manifest, forbids cross-host redirects, and never downloads image layers.
+Registry resolution is off by default. It fetches only size-limited OCI/Docker v2 indexes and manifests, forbids cross-host redirects, and never downloads image layers.
 - `--evidence <file>`: a structured PatchRover evidence envelope.
 - `--kube-snapshot <file>`: an offline Kubernetes PodList.
 - `--kube-context <name>`: an explicit context; PatchRover invokes fixed-argument, read-only pod metadata collection.

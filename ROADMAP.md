@@ -11,7 +11,7 @@
 
 ## Private design-partner beta
 
-- Live OCI registry manifest and SBOM resolution.
+- Registry-attached SBOM discovery and verification.
 - Organization-trusted Sigstore identities and registry transparency.
 - More typed repository and machine-credential integrations without a generic shell or human-password capability.
 - Cross-repository and cross-cluster trail correlation.

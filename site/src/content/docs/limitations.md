@@ -10,7 +10,7 @@ The current release is pre-1.0 and is not a security guarantee.
 - A locally created receipt has a self-signed integrity key and remains untrusted until the exact file is signed and verified under an explicit Sigstore identity and issuer policy.
 - The v1 registry signer is device-bound in one company maintainer's macOS Keychain. Independent custody, recovery, rotation rehearsal, and external audit remain incomplete.
 - Kubernetes evidence is currently pod/container metadata; controllers, jobs, rollback history, registries, nodes, and caches require additional operational checks.
-- Live OCI resolution is opt-in and manifest-only. It records the manifest or index digest observed at that moment; it does not download layers, select a platform child from a multi-platform index, or discover registry-attached SBOMs.
+- Live OCI resolution is opt-in and manifest-only. It can verify one explicitly selected Linux platform child from a multi-platform index, but it does not download layers or discover registry-attached SBOMs.
 - The current collectors cover a narrow set of dependency files and SBOM formats.
 - Autonomous repository fixes are line-specific dependency replacements and stop at a pull request; PatchRover does not merge or deploy them.
 - Credential automation supports exact HashiCorp Vault database root rotations only. It does not change human passwords or cover every secrets provider.
