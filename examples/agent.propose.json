@@ -6,7 +6,7 @@
   "allowedHosts": [
     "www.cisa.gov",
     "api.github.com",
-    "vault.example.com"
+    "control.patchrover.example"
   ],
   "sources": [
     {
@@ -39,13 +39,9 @@
     "maxActionsPerRun": 2
   },
   "integrations": {
-    "github": {
-      "apiBase": "https://api.github.com",
-      "tokenEnv": "PATCHROVER_GITHUB_TOKEN"
-    },
-    "vault": {
-      "address": "https://vault.example.com",
-      "tokenEnv": "PATCHROVER_VAULT_TOKEN"
+    "controlPlane": {
+      "url": "https://control.patchrover.example",
+      "tokenEnv": "PATCHROVER_CONTROL_PLANE_TOKEN"
     }
   }
 }

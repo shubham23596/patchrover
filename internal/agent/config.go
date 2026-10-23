@@ -60,25 +60,12 @@ type Policy struct {
 }
 
 type Integrations struct {
-	GitHub       *GitHubConfig       `json:"github,omitempty"`
-	Vault        *VaultConfig        `json:"vault,omitempty"`
 	ControlPlane *ControlPlaneConfig `json:"controlPlane,omitempty"`
 }
 
 type ControlPlaneConfig struct {
 	URL      string `json:"url"`
 	TokenEnv string `json:"tokenEnv"`
-}
-
-type GitHubConfig struct {
-	APIBase  string `json:"apiBase"`
-	TokenEnv string `json:"tokenEnv"`
-}
-
-type VaultConfig struct {
-	Address   string `json:"address"`
-	TokenEnv  string `json:"tokenEnv"`
-	Namespace string `json:"namespace,omitempty"`
 }
 
 func LoadConfig(path string) (Config, error) {
@@ -195,38 +182,19 @@ func (config Config) Validate() error {
 			return fmt.Errorf("target %s requires explicit evidence", target.ID)
 		}
 		if target.GitHubRepository != "" {
-			if !repositoryPattern.MatchString(target.GitHubRepository) || !branchPattern.MatchString(target.BaseBranch) || (config.Integrations.GitHub == nil && config.Integrations.ControlPlane == nil) {
-				return fmt.Errorf("target %s has invalid GitHub repository or missing integration", target.ID)
+			if !repositoryPattern.MatchString(target.GitHubRepository) || !branchPattern.MatchString(target.BaseBranch) {
+				return fmt.Errorf("target %s has invalid GitHub repository metadata", target.ID)
 			}
 		}
 		for _, name := range target.VaultDatabaseRotations {
-			if !resourcePattern.MatchString(name) || (config.Integrations.Vault == nil && config.Integrations.ControlPlane == nil) {
-				return fmt.Errorf("target %s has invalid Vault database rotation or missing integration", target.ID)
+			if !resourcePattern.MatchString(name) {
+				return fmt.Errorf("target %s has invalid Vault database rotation metadata", target.ID)
 			}
-		}
-	}
-	if config.Integrations.GitHub != nil {
-		if !environmentPattern.MatchString(config.Integrations.GitHub.TokenEnv) {
-			return errors.New("GitHub integration requires a tokenEnv name")
-		}
-		if err := validateHTTPS(config.Integrations.GitHub.APIBase); err != nil {
-			return err
-		}
-	}
-	if config.Integrations.Vault != nil {
-		if !environmentPattern.MatchString(config.Integrations.Vault.TokenEnv) {
-			return errors.New("Vault integration requires a tokenEnv name")
-		}
-		if err := validateHTTPS(config.Integrations.Vault.Address); err != nil {
-			return err
 		}
 	}
 	if config.Integrations.ControlPlane != nil {
 		if config.Mode != "propose" {
 			return errors.New("commercial control plane integration requires propose mode")
-		}
-		if config.Integrations.GitHub != nil || config.Integrations.Vault != nil {
-			return errors.New("commercial control plane and local write integrations cannot be enabled together")
 		}
 		if !environmentPattern.MatchString(config.Integrations.ControlPlane.TokenEnv) {
 			return errors.New("control plane integration requires a tokenEnv name")

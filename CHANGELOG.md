@@ -14,9 +14,9 @@ All notable changes to PatchRover will be documented here.
 - PHP 2026 RCE and LiteLLM 1.107.0 compromise response packs.
 - Astro/Starlight landing page and documentation.
 - CI, CodeQL, release, GitHub Pages, Dependabot, and community health files.
-- Self-hosted continuous agent with observe and human-approval-required remediation modes.
+- Self-hosted continuous agent with read-only observe and propose modes.
 - Structured CISA KEV, GitHub Advisory, and official RSS/Atom monitoring with exact-host HTTPS allowlists.
-- Stale-content-protected GitHub remediation pull requests and exact HashiCorp Vault database root rotations.
-- Strict, owner-readable agent state with a hash-chained audit history and explicit action approval.
-- Interactive review that shows one exact fix, requires the operator to type `yes`, and applies only that approved action.
+- Commercial approval submission that never sends repository contents or write credentials.
+- Strict, owner-readable agent state with a hash-chained audit history.
+- Private customer-hosted runner for stale-content-protected GitHub remediation pull requests and exact HashiCorp Vault database root rotations after team approval.
 

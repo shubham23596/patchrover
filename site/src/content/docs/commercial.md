@@ -11,7 +11,7 @@ PatchRover uses an open-core model with a bright line: detection, evidence, publ
 - Response-pack schema and public registry.
 - GitHub Action and built-in evidence collectors.
 - Local proposals, receipts, and independent verification.
-- Single-environment structured feed monitoring and the already-published bounded GitHub/Vault action interfaces.
+- Single-environment structured feed monitoring and bounded commercial-action proposals.
 - Local-model and customer-configured BYOK interfaces.
 
 ## Commercial product

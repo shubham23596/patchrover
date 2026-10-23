@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -64,8 +63,9 @@ func RunWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 }
 
 func runAgent(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	_ = stdin
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: patchrover agent run|status|review")
+		fmt.Fprintln(stderr, "usage: patchrover agent run|status")
 		return 1
 	}
 	switch args[0] {
@@ -113,90 +113,14 @@ func runAgent(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		for _, action := range state.Actions {
 			fmt.Fprintf(stdout, "ACTION %s type=%s status=%s target=%s\n", action.ID, action.Type, action.Status, action.TargetID)
 			if action.Status == "pending" || action.Status == "failed" {
-				fmt.Fprintf(stdout, "REVIEW patchrover agent review --config CONFIG --action %s\n", action.ID)
+				fmt.Fprintln(stdout, "NEXT submit through integrations.controlPlane for team approval and customer-runner execution")
 			}
 		}
 		return 0
-	case "review":
-		set := flag.NewFlagSet("agent review", flag.ContinueOnError)
-		set.SetOutput(stderr)
-		configPath := set.String("config", "", "agent JSON configuration")
-		actionID := set.String("action", "", "exact pending action ID")
-		if err := set.Parse(args[1:]); err != nil || *configPath == "" || *actionID == "" {
-			fmt.Fprintln(stderr, "agent review requires --config and --action")
-			return 1
-		}
-		config, err := agent.LoadConfig(*configPath)
-		if err != nil {
-			fmt.Fprintln(stderr, "load agent config:", err)
-			return 1
-		}
-		state, err := agent.LoadState(config.StatePath)
-		if err != nil {
-			fmt.Fprintln(stderr, "load agent state:", err)
-			return 1
-		}
-		action, ok := findAction(state.Actions, *actionID)
-		if !ok {
-			fmt.Fprintln(stderr, "review action: action was not found")
-			return 1
-		}
-		if action.Status != "pending" && action.Status != "failed" {
-			fmt.Fprintf(stderr, "review action: action cannot be reviewed from status %s\n", action.Status)
-			return 1
-		}
-		printActionReview(stdout, action)
-		fmt.Fprint(stdout, "Apply this exact fix? Type yes to approve: ")
-		answer, readErr := bufio.NewReader(stdin).ReadString('\n')
-		if readErr != nil && !errors.Is(readErr, io.EOF) {
-			fmt.Fprintln(stderr, "read approval:", readErr)
-			return 1
-		}
-		if strings.TrimSpace(answer) != "yes" {
-			fmt.Fprintln(stdout, "CANCELLED no change was approved or applied")
-			return 0
-		}
-		if err := agent.Approve(config.StatePath, action.ID); err != nil {
-			fmt.Fprintln(stderr, "approve action:", err)
-			return 1
-		}
-		resultURL, err := agent.ApplyApproved(context.Background(), config, action.ID)
-		if err != nil {
-			fmt.Fprintln(stderr, "apply approved action:", err)
-			return 1
-		}
-		fmt.Fprintln(stdout, "COMPLETED", action.ID)
-		if resultURL != "" {
-			fmt.Fprintln(stdout, "RESULT", resultURL)
-		}
-		return 0
 	default:
-		fmt.Fprintln(stderr, "usage: patchrover agent run|status|review")
+		fmt.Fprintln(stderr, "usage: patchrover agent run|status")
 		return 1
 	}
-}
-
-func findAction(actions []agent.Action, id string) (agent.Action, bool) {
-	for _, action := range actions {
-		if action.ID == id {
-			return action, true
-		}
-	}
-	return agent.Action{}, false
-}
-
-func printActionReview(output io.Writer, action agent.Action) {
-	fmt.Fprintf(output, "\nFIX REQUIRES APPROVAL\nACTION %s\nTYPE   %s\nTARGET %s\nPACK   %s\n", action.ID, action.Type, action.TargetID, action.PackID)
-	switch action.Type {
-	case agent.ActionGitHubPullRequest:
-		fmt.Fprintf(output, "REPOSITORY %s\nBASE       %s\n", action.Repository, action.BaseBranch)
-		for _, change := range action.Changes {
-			fmt.Fprintf(output, "CHANGE     %s: %s -> %s\n", change.Path, change.OldVersion, change.NewVersion)
-		}
-	case agent.ActionVaultDatabaseRotation:
-		fmt.Fprintf(output, "MACHINE CREDENTIAL %s\n", action.VaultDatabase)
-	}
-	fmt.Fprintln(output, "PatchRover will apply only this action. It will not merge or deploy the result.")
 }
 
 type evidenceFlags struct {
@@ -657,7 +581,6 @@ Usage:
   patchrover pack validate PACK
   patchrover agent run --config agent.json [--once]
   patchrover agent status --state state.json
-  patchrover agent review --config agent.json --action ACTION_ID
   patchrover version
 
 Evidence flags:
@@ -668,7 +591,7 @@ Evidence flags:
   --kube-context NAME     explicit read-only kubectl context
   --kube-snapshot FILE    offline Kubernetes PodList JSON
 
-Use propose mode to require an interactive review before each fix. The review command shows the
-exact change and applies it only after the operator types yes. PatchRover never changes human
-passwords, never treats missing evidence as safe, never auto-approves, and never deploys production workloads.`)
+Use propose mode to prepare bounded actions. Actual fixes are released only through the commercial
+team approval inbox and signed customer-hosted runner. PatchRover never changes human passwords,
+never treats missing evidence as safe, never auto-approves, and never deploys production workloads.`)
 }

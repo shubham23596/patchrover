@@ -3,9 +3,6 @@ package agent
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -31,21 +28,27 @@ func TestConfigRejectsUnallowlistedAndInsecureEndpoints(t *testing.T) {
 	}
 }
 
-func TestConfigSeparatesCommercialAndLocalWriteCredentials(t *testing.T) {
+func TestConfigRequiresProposeModeForCommercialControlPlane(t *testing.T) {
 	config := validConfig(t.TempDir())
 	config.Integrations.ControlPlane = &ControlPlaneConfig{URL: "https://control.example", TokenEnv: "PATCHROVER_CONTROL_PLANE_TOKEN"}
 	config.AllowedHosts = append(config.AllowedHosts, "control.example")
-	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "cannot be enabled together") {
-		t.Fatalf("mixed local and commercial writes returned %v", err)
-	}
-	config.Integrations.GitHub = nil
-	config.Integrations.Vault = nil
 	if err := config.Validate(); err != nil {
-		t.Fatalf("commercial-only integration was rejected: %v", err)
+		t.Fatalf("commercial integration was rejected: %v", err)
 	}
 	config.Mode = "observe"
 	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "propose mode") {
 		t.Fatalf("observe-mode commercial integration returned %v", err)
+	}
+}
+
+func TestConfigRejectsRemovedLocalWriteIntegration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.json")
+	data := []byte(`{"apiVersion":"patchrover.dev/agent/v1alpha1","mode":"propose","interval":"5m","statePath":"state.json","allowedHosts":[],"targets":[],"policy":{"maxActionsPerRun":1},"integrations":{"github":{"apiBase":"https://api.github.com","tokenEnv":"PATCHROVER_GITHUB_TOKEN"}}}`)
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadConfig(path); err == nil || !strings.Contains(err.Error(), "unknown field") {
+		t.Fatalf("removed local write integration returned %v", err)
 	}
 }
 
@@ -76,66 +79,7 @@ func TestAuditTamperingFails(t *testing.T) {
 	}
 }
 
-func TestVaultRotationUsesExactBoundedEndpoint(t *testing.T) {
-	var gotPath, gotToken string
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		gotPath, gotToken = request.URL.Path, request.Header.Get("X-Vault-Token")
-		writer.WriteHeader(http.StatusNoContent)
-	}))
-	defer server.Close()
-	client := VaultClient{Address: server.URL, Token: "secret-test-token", HTTP: server.Client(), AllowHTTP: true}
-	if err := client.RotateDatabaseRoot(context.Background(), "payments-prod"); err != nil {
-		t.Fatal(err)
-	}
-	if gotPath != "/v1/database/rotate-root/payments-prod" || gotToken != "secret-test-token" {
-		t.Fatalf("unexpected request path=%q token=%q", gotPath, gotToken)
-	}
-	if err := client.RotateDatabaseRoot(context.Background(), "../../human-password"); err == nil {
-		t.Fatal("expected unsafe resource name to fail")
-	}
-}
-
-func TestGitHubClientCreatesBoundedPullRequest(t *testing.T) {
-	before := []byte("litellm==1.107.0\n")
-	sum := sha256.Sum256(before)
-	change := model.RemediationChange{Path: "requirements.txt", OldVersion: "1.107.0", NewVersion: "1.106.2", Package: "litellm", Collector: "requirements", Line: 1, BeforeSHA256: hex.EncodeToString(sum[:])}
-	var updated []byte
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.Header.Get("Authorization") != "Bearer test-token" {
-			t.Fatal("missing GitHub bearer token")
-		}
-		switch {
-		case request.Method == http.MethodGet && strings.Contains(request.URL.Path, "/git/ref/"):
-			writeJSONResponse(t, writer, map[string]any{"object": map[string]string{"sha": "base-sha"}})
-		case request.Method == http.MethodGet && strings.Contains(request.URL.Path, "/contents/"):
-			writeJSONResponse(t, writer, map[string]string{"sha": "file-sha", "encoding": "base64", "content": base64.StdEncoding.EncodeToString(before)})
-		case request.Method == http.MethodPost && strings.HasSuffix(request.URL.Path, "/git/refs"):
-			writeJSONResponse(t, writer, map[string]string{"ref": "ok"})
-		case request.Method == http.MethodPut && strings.Contains(request.URL.Path, "/contents/"):
-			var body map[string]string
-			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
-				t.Fatal(err)
-			}
-			updated, _ = base64.StdEncoding.DecodeString(body["content"])
-			writeJSONResponse(t, writer, map[string]string{"sha": "new-sha"})
-		case request.Method == http.MethodPost && strings.HasSuffix(request.URL.Path, "/pulls"):
-			writeJSONResponse(t, writer, map[string]string{"html_url": "https://github.com/acme/service/pull/1"})
-		default:
-			http.Error(writer, "unexpected", http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-	action := Action{ID: "1234567890abcdef", Type: ActionGitHubPullRequest, PackID: "litellm-pack", Repository: "acme/service", BaseBranch: "main", Changes: []model.RemediationChange{change}}
-	url, err := (GitHubClient{BaseURL: server.URL, Token: "test-token", HTTP: server.Client(), AllowHTTP: true}).OpenRemediationPullRequest(context.Background(), action)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if url != "https://github.com/acme/service/pull/1" || string(updated) != "litellm==1.106.2\n" {
-		t.Fatalf("unexpected URL or content: %q %q", url, updated)
-	}
-}
-
-func TestRunOnceQueuesActionsAndApproval(t *testing.T) {
+func TestRunOnceQueuesReadOnlyProposalsWithoutExecution(t *testing.T) {
 	directory := t.TempDir()
 	repository := filepath.Join(directory, "repo")
 	if err := os.Mkdir(repository, 0o700); err != nil {
@@ -164,19 +108,12 @@ func TestRunOnceQueuesActionsAndApproval(t *testing.T) {
 	if len(state.Actions) != 2 || state.Actions[0].Status != "pending" {
 		t.Fatalf("unexpected actions %#v", state.Actions)
 	}
-	if err := Approve(config.StatePath, state.Actions[0].ID); err != nil {
-		t.Fatal(err)
-	}
-	state, _ = LoadState(config.StatePath)
-	if state.Actions[0].Status != "approved" {
-		t.Fatal("approval was not persisted")
-	}
 	if _, err := (Runner{}).RunOnce(context.Background(), config); err != nil {
 		t.Fatal(err)
 	}
 	state, _ = LoadState(config.StatePath)
-	if state.Actions[0].Status != "approved" {
-		t.Fatalf("background assessment executed an approved action: %#v", state.Actions[0])
+	if state.Actions[0].Status != "pending" {
+		t.Fatalf("open-source agent changed a proposed action: %#v", state.Actions[0])
 	}
 }
 
@@ -262,47 +199,11 @@ func TestCommercialActionsSplitMultiFileChanges(t *testing.T) {
 	}
 }
 
-func TestApplyApprovedFailsClosedAndRecordsOutcome(t *testing.T) {
-	directory := t.TempDir()
-	config := validConfig(directory)
-	config.Integrations = Integrations{}
-	state := NewState()
-	state.Actions = []Action{{
-		ID: "approved-action", Type: ActionGitHubPullRequest, TargetID: "service", PackID: "incident-pack",
-		Status: "approved", Repository: "acme/service", BaseBranch: "main",
-	}}
-	if err := SaveState(config.StatePath, state); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ApplyApproved(context.Background(), config, "approved-action"); err == nil || !strings.Contains(err.Error(), "not configured") {
-		t.Fatalf("expected a closed failure for a missing integration, got %v", err)
-	}
-	state, err := LoadState(config.StatePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if state.Actions[0].Status != "failed" || len(state.Audit) != 2 || state.Audit[0].Event != "action_started" || state.Audit[1].Event != "action_failed" {
-		t.Fatalf("unexpected failed action state %#v", state)
-	}
-}
-
 func validConfig(directory string) Config {
 	return Config{
 		APIVersion: ConfigVersion, Mode: "propose", Interval: "5m", StatePath: filepath.Join(directory, "state.json"),
-		AllowedHosts: []string{"api.github.com", "vault.example"},
+		AllowedHosts: []string{"api.github.com"},
 		Targets:      []Target{{ID: "service", Pack: "pack", Evidence: collect.Options{ImageReference: "example:v1"}}},
 		Policy:       Policy{MaxActionsPerRun: 2},
-		Integrations: Integrations{
-			GitHub: &GitHubConfig{APIBase: "https://api.github.com", TokenEnv: "PATCHROVER_GITHUB_TOKEN"},
-			Vault:  &VaultConfig{Address: "https://vault.example", TokenEnv: "PATCHROVER_VAULT_TOKEN"},
-		},
-	}
-}
-
-func writeJSONResponse(t *testing.T, writer http.ResponseWriter, value any) {
-	t.Helper()
-	writer.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(writer).Encode(value); err != nil {
-		t.Fatal(err)
 	}
 }

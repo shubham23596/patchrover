@@ -20,7 +20,7 @@ Only structured matcher rules decide verdicts. Missing or contradictory evidence
 ## Default protections
 
 - No production workload writes, merges, autonomous deployments, or human-password changes.
-- Agent writes are limited to typed GitHub pull requests and exact Vault database root rotations under explicit policy.
+- The open-source agent is read-only. Commercial runner writes are limited to typed GitHub pull requests and exact Vault database root rotations under explicit approval.
 - Repository content must match the SHA-256 assessed version before an automatic edit.
 - Agent state has strict decoding and a hash-chained audit history.
 - No arbitrary commands from packs.
