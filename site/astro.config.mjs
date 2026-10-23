@@ -3,6 +3,7 @@ import starlight from '@astrojs/starlight';
 
 const site = process.env.SITE_URL || 'https://patchrover.invalid';
 const base = process.env.BASE_PATH || '/';
+const baseURL = `${base.replace(/\/$/, '')}/`;
 
 export default defineConfig({
   site,
@@ -13,7 +14,7 @@ export default defineConfig({
       description: 'Track a critical vulnerability from advisory to the workload actually running.',
       disable404Route: true,
       logo: { src: './src/assets/rover-mark.svg', alt: 'PatchRover' },
-      favicon: '/favicon.svg',
+      favicon: `${baseURL}favicon.svg`,
       customCss: ['./src/styles/starlight.css'],
       social: process.env.PUBLIC_GITHUB_URL
         ? [{ icon: 'github', label: 'GitHub', href: process.env.PUBLIC_GITHUB_URL }]

@@ -2,7 +2,7 @@
 import RoverMark from '../components/RoverMark.astro';
 import '../styles/landing.css';
 
-const base = import.meta.env.BASE_URL;
+const base = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
 const link = (path: string) => `${base}${path.replace(/^\//, '')}`;
 const githubUrl = import.meta.env.PUBLIC_GITHUB_URL;
 const contactEmail = import.meta.env.PUBLIC_CONTACT_EMAIL;

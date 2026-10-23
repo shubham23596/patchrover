@@ -2,7 +2,7 @@
 import RoverMark from '../components/RoverMark.astro';
 import '../styles/landing.css';
 
-const base = import.meta.env.BASE_URL;
+const base = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/`;
 const docs = `${base}getting-started/`;
 ---
 
