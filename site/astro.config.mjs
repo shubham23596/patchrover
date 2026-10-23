@@ -23,7 +23,8 @@ export default defineConfig({
           label: 'Start here',
           items: [
             { label: 'Getting started', slug: 'getting-started' },
-            { label: 'CLI reference', slug: 'cli' }
+            { label: 'CLI reference', slug: 'cli' },
+            { label: 'Autonomous agent', slug: 'autonomous-agent' }
           ]
         },
         {

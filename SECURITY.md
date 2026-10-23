@@ -8,7 +8,7 @@ PatchRover is pre-1.0. Only the latest release receives security fixes.
 
 Do not open a public issue for suspected vulnerabilities, malicious pack bypasses, secret exposure, signature failures, or unsafe verdicts.
 
-Before public launch, enable GitHub private vulnerability reporting for the organization repository. Until that channel exists, contact the maintainers through the private company security address configured at launch. No placeholder email is published here because an unmonitored security address would create false confidence.
+At public launch, enable GitHub private vulnerability reporting for `shubham23596/patchrover`. Until that channel is verified, contact the maintainer privately through the GitHub profile. No placeholder email is published because an unmonitored security address would create false confidence.
 
 Include:
 

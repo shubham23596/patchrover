@@ -73,3 +73,18 @@ func TestReplaceVersionRefusesWrongLine(t *testing.T) {
 		t.Fatal("replacement ignored the evidence line")
 	}
 }
+
+func TestApplyChangeRejectsStaleContent(t *testing.T) {
+	change := model.RemediationChange{
+		Path: "requirements.txt", OldVersion: "1.107.0", NewVersion: "1.106.2",
+		Package: "litellm", Collector: "requirements", Line: 1,
+		BeforeSHA256: contentSHA256([]byte("litellm==1.107.0\n")),
+	}
+	updated, err := ApplyChange([]byte("litellm==1.107.0\n"), change)
+	if err != nil || string(updated) != "litellm==1.106.2\n" {
+		t.Fatalf("apply bounded change: updated=%q err=%v", updated, err)
+	}
+	if _, err := ApplyChange([]byte("litellm==1.107.0\n# changed\n"), change); err == nil {
+		t.Fatal("stale content unexpectedly accepted")
+	}
+}

@@ -157,10 +157,14 @@ type Trail struct {
 }
 
 type RemediationChange struct {
-	Path       string `json:"path"`
-	OldVersion string `json:"oldVersion"`
-	NewVersion string `json:"newVersion"`
-	Patch      string `json:"patch,omitempty"`
+	Path         string `json:"path"`
+	OldVersion   string `json:"oldVersion"`
+	NewVersion   string `json:"newVersion"`
+	Package      string `json:"package,omitempty"`
+	Collector    string `json:"collector,omitempty"`
+	Line         int    `json:"line,omitempty"`
+	BeforeSHA256 string `json:"beforeSha256,omitempty"`
+	Patch        string `json:"patch,omitempty"`
 }
 
 type RemediationProposal struct {

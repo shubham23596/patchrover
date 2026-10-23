@@ -3,7 +3,7 @@ title: Security model
 description: Trust boundaries, fail-closed behavior, and read-only collection.
 ---
 
-PatchRover is designed to support a human incident-response process, not replace it.
+PatchRover automates bounded incident-response work while keeping production deployment and human identity changes outside its authority.
 
 ## Trust boundaries
 
@@ -19,7 +19,10 @@ Only structured matcher rules decide verdicts. Missing or contradictory evidence
 
 ## Default protections
 
-- No production writes or autonomous deployments.
+- No production workload writes, merges, autonomous deployments, or human-password changes.
+- Agent writes are limited to typed GitHub pull requests and exact Vault database root rotations under explicit policy.
+- Repository content must match the SHA-256 assessed version before an automatic edit.
+- Agent state has strict decoding and a hash-chained audit history.
 - No arbitrary commands from packs.
 - Evidence files are size-limited and must be regular files.
 - Repository collection skips VCS data, dependencies, virtual environments, and build outputs.

@@ -1,0 +1,52 @@
+{
+  "apiVersion": "patchrover.dev/agent/v1alpha1",
+  "mode": "propose",
+  "interval": "15m",
+  "statePath": "../.patchrover/agent-state.json",
+  "allowedHosts": [
+    "www.cisa.gov",
+    "api.github.com",
+    "vault.example.com"
+  ],
+  "sources": [
+    {
+      "id": "cisa-kev",
+      "kind": "cisa-kev",
+      "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+    },
+    {
+      "id": "github-advisories",
+      "kind": "github-advisories",
+      "url": "https://api.github.com/advisories?per_page=100"
+    }
+  ],
+  "targets": [
+    {
+      "id": "example-service",
+      "pack": "../packs/litellm-1.107.0-compromise",
+      "evidence": {
+        "repositoryPath": "../packs/litellm-1.107.0-compromise/fixtures/affected",
+        "kubeSnapshot": "../packs/litellm-1.107.0-compromise/fixtures/affected/pods.json"
+      },
+      "githubRepository": "YOUR_ACCOUNT/YOUR_REPOSITORY",
+      "baseBranch": "main",
+      "vaultDatabaseRotations": [
+        "example-service-production"
+      ]
+    }
+  ],
+  "policy": {
+    "autoActions": [],
+    "maxActionsPerRun": 2
+  },
+  "integrations": {
+    "github": {
+      "apiBase": "https://api.github.com",
+      "tokenEnv": "PATCHROVER_GITHUB_TOKEN"
+    },
+    "vault": {
+      "address": "https://vault.example.com",
+      "tokenEnv": "PATCHROVER_VAULT_TOKEN"
+    }
+  }
+}

@@ -7,6 +7,7 @@
 /patchrover-trail.json
 /patchrover-proposal.md
 /patchrover-receipt.json
+/.patchrover/
 
 # Website dependencies and output
 /site/node_modules/

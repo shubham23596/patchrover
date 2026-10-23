@@ -11,6 +11,9 @@ The current release is a working alpha, not a security guarantee.
 - Kubernetes evidence is currently pod/container metadata; controllers, jobs, rollback history, registries, nodes, and caches require additional operational checks.
 - OCI references are inspected as provided. The alpha does not fetch registry manifests or layers.
 - The current collectors cover a narrow set of dependency files and SBOM formats.
+- Autonomous repository fixes are line-specific dependency replacements and stop at a pull request; PatchRover does not merge or deploy them.
+- Credential automation supports exact HashiCorp Vault database root rotations only. It does not change human passwords or cover every secrets provider.
+- Advisory monitoring is structured and allowlisted. It is not a general web crawler, and uncovered advisories require a reviewed signed pack before remediation.
 - Live disposable OCI and local-cluster end-to-end tests remain a launch gate on a host with a container runtime.
 - LiteLLM incident content is provisional and can change as the upstream investigation evolves.
 - Windows is not supported in the initial release.

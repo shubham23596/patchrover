@@ -7,14 +7,16 @@
 - Kubernetes workload metadata.
 - Response-pack integrity and registry trust.
 - Trails, proposals, and production receipts.
+- Agent configuration, approval state, provider tokens, and action audit history.
 
 ## Trust boundaries
 
 1. Response packs are untrusted input until schema and signature validation succeeds.
 2. Repository files, SBOMs, Kubernetes metadata, and advisory text are untrusted data.
 3. Deterministic matchers alone decide verdicts.
-4. Any future model is an explanation/proposal boundary with no direct production credentials or tools.
+4. Any model is an explanation/proposal boundary with no direct credentials or tools.
 5. Receipt integrity is distinct from signer identity trust.
+6. Agent actions are typed capabilities, not a shell: GitHub pull requests and exact Vault database rotations only.
 
 ## Primary threats and controls
 
@@ -29,6 +31,11 @@
 | Receipt tampering | DSSE signature verification and subject digest checks. |
 | Self-signed receipt mistaken for trusted identity | Verifier reports integrity and identity trust separately; alpha receipts are explicitly untrusted-self-signed. |
 | Compromised GitHub workflow | Minimal permissions, pinned action SHAs, Dependabot, CodeQL, repository-enforced protected releases, and signed provenance. |
+| Advisory feed injects instructions | HTTPS and exact-host allowlists, size limits, structured parsers, no execution, and no verdict without a signed Response Pack. |
+| Agent overwrites a developer change | The remote file must match the SHA-256 observed during assessment; replacements are line-specific and fail closed. |
+| Stolen integration token broadens access | Tokens stay in environment variables; operators must use provider-side least privilege; no token is persisted to state. |
+| Approval or audit record is altered | State uses strict decoding and a hash-chained audit log; existing-entry tampering prevents the agent from loading. |
+| Credential automation changes a human password | No human-password capability exists. Alpha supports only exact, allowlisted Vault database root rotations. |
 
 ## Residual risks
 
@@ -37,6 +44,7 @@
 - Kubernetes pod metadata proves an observed image identity, not absence of compromise.
 - A fixed version does not prove that unrelated vulnerabilities or persistence are absent.
 - The v1 response-pack signing seed is device-bound in one company maintainer's macOS Keychain. Independent custody, recovery, rotation rehearsal, and external audit are not yet complete.
+- A provider token can still be abused within its provider-side permissions; least-privilege scoping and independent monitoring remain operator responsibilities.
 
 These limitations must remain visible in CLI and website output.
 

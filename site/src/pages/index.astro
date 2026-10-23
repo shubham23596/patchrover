@@ -7,7 +7,7 @@ const link = (path: string) => `${base}${path.replace(/^\//, '')}`;
 const githubUrl = import.meta.env.PUBLIC_GITHUB_URL;
 const contactEmail = import.meta.env.PUBLIC_CONTACT_EMAIL;
 const title = 'PatchRover — Track. Fix. Prove.';
-const description = 'Follow a critical vulnerability from advisory to repository, container, and the workload actually running.';
+const description = 'Monitor critical vulnerabilities, open bounded fixes, rotate allowlisted machine credentials, and prove what is running.';
 ---
 
 <!doctype html>
@@ -45,7 +45,7 @@ const description = 'Follow a critical vulnerability from advisory to repository
         <div class="hero-copy">
           <div class="eyebrow"><span></span> Local-first incident response</div>
           <h1 id="hero-title">Track. Fix.<br /><em>Prove.</em></h1>
-          <p class="lede">PatchRover follows a critical vulnerability from advisory to repository, container, and the workload actually running in production.</p>
+          <p class="lede">PatchRover monitors critical vulnerabilities, correlates signed evidence across source and runtime, opens bounded fixes, and proves what is actually running.</p>
           <div class="hero-actions">
             <a class="button primary" href="#demo">Run the five-minute demo <span aria-hidden="true">→</span></a>
             {
@@ -57,7 +57,7 @@ const description = 'Follow a critical vulnerability from advisory to repository
             }
           </div>
           <ul class="trust-list" aria-label="Product principles">
-            <li>Read-only by default</li>
+            <li>Policy-controlled actions</li>
             <li>No model required</li>
             <li>No silent data upload</li>
           </ul>
@@ -94,7 +94,7 @@ const description = 'Follow a critical vulnerability from advisory to repository
 
       <section class="proof-strip" aria-label="Project facts">
         <div><strong>4</strong><span>deterministic verdicts</span></div>
-        <div><strong>0</strong><span>production writes in v1</span></div>
+        <div><strong>2</strong><span>typed write capabilities</span></div>
         <div><strong>2</strong><span>signed launch packs</span></div>
         <div><strong>100%</strong><span>synthetic demo fixtures</span></div>
       </section>
@@ -117,8 +117,8 @@ const description = 'Follow a critical vulnerability from advisory to repository
             <span class="step-number">02</span>
             <div class="step-icon" aria-hidden="true">△</div>
             <h3>Fix</h3>
-            <p>PatchRover prepares a local diff, test plan, operational checklist, and human approvals. It never pushes or deploys.</p>
-            <code>proposal: review_required</code>
+            <p>PatchRover proposes locally or opens a stale-content-protected pull request. It can rotate only exact allowlisted machine credentials.</p>
+            <code>policy: explicit</code>
           </li>
           <li>
             <span class="step-number">03</span>
@@ -127,6 +127,19 @@ const description = 'Follow a critical vulnerability from advisory to repository
             <p>Fresh evidence confirms the fixed source and immutable running digest, then creates a redacted, signed receipt.</p>
             <code>receipt: integrity_valid</code>
           </li>
+        </ol>
+      </section>
+
+      <section class="workflow section" aria-labelledby="agent-title">
+        <div class="section-intro">
+          <div class="eyebrow"><span></span> Safe autonomy</div>
+          <h2 id="agent-title">Intelligent enough to act.<br />Bounded enough to trust.</h2>
+          <p>The self-hosted agent monitors structured CISA, GitHub Advisory, and official publisher feeds. A new advisory becomes an automatic fix only when a signed Response Pack supplies deterministic rules.</p>
+        </div>
+        <ol class="steps">
+          <li><span class="step-number">01</span><div class="step-icon" aria-hidden="true">◉</div><h3>Observe</h3><p>Continuously ingest allowlisted HTTPS feeds and reassess explicit repositories and runtime evidence.</p><code>mode: observe</code></li>
+          <li><span class="step-number">02</span><div class="step-icon" aria-hidden="true">◇</div><h3>Propose</h3><p>Queue an exact pull request or machine-credential rotation for a human to approve by action ID.</p><code>mode: propose</code></li>
+          <li><span class="step-number">03</span><div class="step-icon" aria-hidden="true">✓</div><h3>Authorize</h3><p>Execute only action types listed in policy, with rate limits and a tamper-evident audit history.</p><code>mode: authorized</code></li>
         </ol>
       </section>
 
@@ -241,7 +254,7 @@ const description = 'Follow a critical vulnerability from advisory to repository
           </div>
           <div class="security-grid">
             <div><strong>01</strong><h3>Deterministic verdicts</h3><p>AI may explain evidence or draft a proposal. It cannot turn <code>unknown</code> into <code>not_affected</code>.</p></div>
-            <div><strong>02</strong><h3>Read-only collection</h3><p>Kubernetes requires an explicit context and calls only fixed metadata reads. v1 never changes production.</p></div>
+            <div><strong>02</strong><h3>Bounded actions</h3><p>Kubernetes stays read-only. Writes are typed pull requests or exact Vault database rotations—never shell, merge, deploy, or human-password access.</p></div>
             <div><strong>03</strong><h3>Signed content</h3><p>Pack bytes, trails, and DSSE-wrapped in-toto receipts fail closed when modified.</p></div>
             <div><strong>04</strong><h3>Private by default</h3><p>Receipts tokenize internal asset identities. Public sharing is a separate, explicit decision.</p></div>
           </div>
@@ -271,13 +284,14 @@ const description = 'Follow a critical vulnerability from advisory to repository
       <section class="launch-status section" id="source-status" aria-labelledby="status-title">
         <div>
           <div class="eyebrow"><span></span> Credible launch, not an empty repository</div>
-          <h2 id="status-title">Private prelaunch build.</h2>
+          <h2 id="status-title">Working alpha launch.</h2>
         </div>
         <div>
-          <p>The source, two signed packs, threat model, contribution process, tests, and GitHub Pages site are being prepared together. The alpha repository will publish from founder Shubham Jain’s GitHub account after private CI, repository protections, release provenance, and live Pages checks pass.</p>
+          <p>The source, autonomous controller, two signed packs, threat model, contribution process, tests, and GitHub Pages site ship together from founder Shubham Jain’s GitHub account. This is an inspectable alpha, not a claim of production certification.</p>
           <ul>
             <li><span class="done">✓</span> Local deterministic demo and golden corpus</li>
             <li><span class="done">✓</span> Signed alpha packs and tamper checks</li>
+            <li><span class="done">✓</span> Policy-controlled pull requests and machine-credential rotation</li>
             <li><span class="pending">→</span> Trademark, domain, and account clearance</li>
             <li><span class="pending">→</span> Organization controls and first public release</li>
           </ul>

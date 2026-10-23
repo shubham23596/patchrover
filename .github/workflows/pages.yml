@@ -19,7 +19,6 @@ concurrency:
 
 jobs:
   build:
-    if: vars.PUBLIC_LAUNCH == 'true'
     runs-on: ubuntu-latest
     env:
       PUBLIC_GITHUB_URL: https://github.com/${{ github.repository }}

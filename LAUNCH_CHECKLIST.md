@@ -1,6 +1,6 @@
 # Public Launch Checklist
 
-The repository is deliberately launch-gated. Do not set the enablement variables until every owner has reviewed this list.
+The public alpha can launch with the controls marked as alpha requirements below. Stable binary releases remain deliberately gated until every owner has reviewed this list.
 
 ## 1. Name and company ownership
 
@@ -34,7 +34,7 @@ The repository is deliberately launch-gated. Do not set the enablement variables
 - Configure a monitored company security address and a separate design-partner address.
 - Set `PUBLIC_CONTACT_EMAIL` to the design-partner address; keep private reports on GitHub private vulnerability reporting or the monitored security address.
 - Set `PUBLIC_SITE_URL` after domain/DNS approval, or leave it blank for the GitHub Pages URL.
-- Set `PUBLIC_LAUNCH=true` only when the source repository is public and the launch page is accurate.
+- GitHub Pages deploys from `main` after the repository is public. Leave `PUBLIC_SITE_URL` blank to use the repository Pages URL.
 - Configure and verify the GitHub Pages custom domain and HTTPS enforcement.
 - Re-run Lighthouse on the production URL; require performance, accessibility, best-practices, and SEO scores of at least 95.
 

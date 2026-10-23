@@ -10,7 +10,8 @@ PatchRover is intentionally conservative:
 - missing or contradictory evidence remains `unknown`;
 - response packs cannot execute arbitrary commands;
 - Kubernetes collection is read-only and requires an explicit context;
-- remediation is proposed locally and never deployed;
+- repository remediation is either proposed or opened as a bounded pull request under explicit policy; PatchRover never merges or deploys it;
+- machine credentials can be rotated only through typed, allowlisted provider integrations; human passwords are out of scope;
 - receipts redact internal identifiers by default;
 - no model, account, cloud service, or API key is required for the core workflow.
 
@@ -23,6 +24,7 @@ The demo is synthetic, deterministic, account-free, and does not execute vulnera
 
 ```bash
 go run ./cmd/patchrover demo
+go run ./cmd/patchrover agent demo
 ```
 
 It demonstrates a compromised dependency in source and a running workload, generates a local remediation proposal, simulates a human-approved deployment, verifies the fixed runtime digest, and creates a signed production receipt.
@@ -36,6 +38,10 @@ patchrover propose --pack <pack-directory-or-json> --trail <trail.json> [explici
 patchrover verify --pack <pack-directory-or-json> --trail <trail.json> [evidence flags]
 patchrover receipt verify <receipt.json>
 patchrover pack validate <pack-directory-or-json>
+patchrover agent demo
+patchrover agent run --config <agent.json> [--once]
+patchrover agent status --state <state.json>
+patchrover agent approve --state <state.json> --action <action-id>
 ```
 
 `assess` exits with code `2` for `affected`, `3` for `unknown`, and `0` for a fixed or explicitly not-affected result. This makes it safe to use as a CI gate without confusing uncertainty with safety.
@@ -66,6 +72,12 @@ Optional inputs:
 
 Optional proposal explanation is off by default. `--ai-provider ollama --ai-model <installed-model>` calls only the loopback Ollama endpoint and never downloads a model. `--ai-provider openai-compatible` additionally requires an explicit HTTPS `--ai-endpoint`, `--ai-model`, and `--ai-key-env`; this is an explicit BYOK data transfer with no silent fallback. Provider prose is labeled untrusted and cannot alter evidence, verdicts, or local diffs.
 
+## Safe autonomous mode
+
+The self-hosted controller monitors allowlisted CISA KEV, GitHub Advisory, and official RSS/Atom feeds; continuously reassesses explicit targets; and can open a bounded dependency-remediation pull request or rotate an explicitly named HashiCorp Vault database root credential. It has `observe`, `propose`, and `authorized` modes. Authorized actions must be separately listed in policy and are rate-limited per run.
+
+PatchRover has no arbitrary shell tool, no human-password action, no merge action, and no production-deployment action. Repository content must still match the exact SHA-256 observed during assessment or an automatic edit fails closed. See the [autonomous-agent guide](docs/autonomous-agent.md) and [example configuration](examples/agent.propose.json).
+
 ## Response packs
 
 The first registry packs are:
@@ -92,9 +104,9 @@ Production receipts are in-toto statements wrapped in a DSSE envelope with an em
 
 ## Project status
 
-PatchRover is a working alpha foundation. The deterministic demo, trusted pack validation, local repository/SBOM/image collectors, offline Kubernetes snapshots, explicit read-only kubectl collector, remediation proposal generation, signed receipt verification, CI, and website are implemented. Multi-maintainer key custody, live OCI registry resolution, trusted Sigstore receipt identities, and a hosted commercial control plane remain future work.
+PatchRover is a working alpha, not a production-ready security guarantee. Deterministic assessment, signed packs, evidence collection, local proposals, policy-controlled pull requests, typed Vault database credential rotation, advisory feeds, tamper-evident agent state, signed receipt verification, CI, and the static website are implemented. Multi-maintainer key custody, live OCI registry resolution, trusted Sigstore receipt identities, external security review, and production design-partner evidence remain future work.
 
-Pages and release workflows remain disabled by repository variables until the account, brand, contact, and release controls in the launch checklist are complete. The intended alpha home is `github.com/shubham23596/patchrover`, with its website served by GitHub Pages at `shubham23596.github.io/patchrover/`.
+GitHub Pages deploys automatically from `main`. Binary releases remain disabled until the release controls in the launch checklist are complete. The intended alpha home is `github.com/shubham23596/patchrover`, with its website served by GitHub Pages at `shubham23596.github.io/patchrover/`.
 
 ## License
 

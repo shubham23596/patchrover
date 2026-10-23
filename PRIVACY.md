@@ -17,8 +17,11 @@ The default workflow does not contact a model or hosted PatchRover service. A us
 - invoke an installed `kubectl` binary against a named context for fixed, read-only pod metadata collection;
 - request an explanation from a loopback Ollama endpoint using an already-installed model; or
 - configure an HTTPS OpenAI-compatible BYOK endpoint, model name, and API-key environment variable.
+- run the self-hosted agent against exact allowlisted advisory, GitHub API, or Vault endpoints.
 
-PatchRover never downloads a model, silently falls back to a cloud provider, or enables these network paths without their explicit flags. Provider prose is untrusted and cannot alter evidence, verdicts, or local diffs. Future registry downloads and hosted integrations must remain opt-in, documented, and independently disableable.
+The agent reads provider tokens only from named environment variables. Token values are not written to configuration, state, trails, receipts, or audit entries. Repository pull requests transmit only the bounded changed file to the configured GitHub repository. Vault rotation sends no password value; it invokes the exact provider rotation endpoint for a configured database connection.
+
+PatchRover never downloads a model, silently falls back to a cloud provider, or enables these network paths without explicit configuration. Provider prose is untrusted and cannot alter evidence, verdicts, or local diffs. Future registry downloads and hosted integrations must remain opt-in, documented, and independently disableable.
 
 ## Sharing
 

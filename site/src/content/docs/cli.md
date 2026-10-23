@@ -42,6 +42,15 @@ Validates DSSE integrity and the signed in-toto statement. Integrity and identit
 
 Validates schema, expiry, review state, source URLs, deterministic matcher rules, and the Ed25519 signature. A directory resolves to its `pack.json`.
 
+## `patchrover agent`
+
+- `agent demo` runs the offline autonomous-decision and bounded-edit demonstration.
+- `agent run --config <file> [--once]` monitors sources and targets, then queues or executes policy-authorized actions.
+- `agent status --state <file>` reports target verdicts and action states.
+- `agent approve --state <file> --action <id>` records human approval for one exact pending action.
+
+The agent supports `observe`, `propose`, and `authorized` modes. Its only alpha write capabilities are GitHub pull requests and exact HashiCorp Vault database root rotations; it has no human-password, merge, deployment, or arbitrary-shell action.
+
 ## Exit codes
 
 | Code | Meaning |

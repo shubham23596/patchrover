@@ -41,7 +41,9 @@ jobs:
           go run ./cmd/patchrover pack validate packs/php-2026-rce
           go run ./cmd/patchrover pack validate packs/litellm-1.107.0-compromise
       - name: Run account-free demo
-        run: go run ./cmd/patchrover demo
+        run: |
+          go run ./cmd/patchrover demo
+          go run ./cmd/patchrover agent demo
       - name: Confirm affected exit code
         shell: bash
         run: |

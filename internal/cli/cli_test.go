@@ -20,6 +20,18 @@ func TestPackValidateIncludesGoldenFixtures(t *testing.T) {
 	}
 }
 
+func TestAgentDemoIsOfflineAndBounded(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Run([]string{"agent", "demo"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("agent demo failed: %s", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "bounded PR content prepared") || !strings.Contains(stdout.String(), "No network, token, password, repository, or production system was changed") {
+		t.Fatalf("unexpected agent demo output: %s", stdout.String())
+	}
+}
+
 func TestFixtureSafetyRejectsExecutableContent(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "run.sh")

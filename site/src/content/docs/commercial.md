@@ -11,6 +11,7 @@ PatchRover uses an open-core model with a bright line: the local incident workfl
 - Response-pack schema and public registry.
 - GitHub Action and built-in evidence collectors.
 - Local proposals, receipts, and independent verification.
+- Single-environment structured feed monitoring, policy-controlled pull requests, and typed Vault database credential rotation.
 - Local-model and customer-configured BYOK interfaces.
 
 ## Commercial direction

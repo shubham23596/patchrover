@@ -1,6 +1,8 @@
 package proposal
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -70,16 +72,45 @@ func Build(responsePack model.ResponsePack, trail model.Trail, repositoryRoot st
 			continue
 		}
 		proposal.Changes = append(proposal.Changes, model.RemediationChange{
-			Path:       path,
-			OldVersion: evidence.Version,
-			NewVersion: fixedVersion,
-			Patch:      unifiedDiff(path, string(content), updated, line),
+			Path:         path,
+			OldVersion:   evidence.Version,
+			NewVersion:   fixedVersion,
+			Package:      evidence.Name,
+			Collector:    evidence.Collector,
+			Line:         line,
+			BeforeSHA256: contentSHA256(content),
+			Patch:        unifiedDiff(path, string(content), updated, line),
 		})
 	}
 	if len(proposal.Changes) == 0 {
 		proposal.Warnings = append(proposal.Warnings, "No mechanically safe local diff was available; follow the structured remediation steps manually.")
 	}
 	return proposal
+}
+
+// ApplyChange applies one mechanically generated dependency change only when
+// the current file still matches the content assessed by PatchRover.
+func ApplyChange(content []byte, change model.RemediationChange) ([]byte, error) {
+	if change.Path == "" || change.OldVersion == "" || change.NewVersion == "" || change.Package == "" || change.Collector == "" || change.Line < 1 || change.BeforeSHA256 == "" {
+		return nil, fmt.Errorf("remediation change is missing bounded-apply metadata")
+	}
+	if contentSHA256(content) != change.BeforeSHA256 {
+		return nil, fmt.Errorf("%s changed after assessment; refusing automatic edit", change.Path)
+	}
+	updated, changed := replaceVersion(string(content), model.EvidenceRef{
+		Name:      change.Package,
+		Version:   change.OldVersion,
+		Collector: change.Collector,
+	}, change.NewVersion, change.Line)
+	if !changed {
+		return nil, fmt.Errorf("no exact safe replacement remains in %s", change.Path)
+	}
+	return []byte(updated), nil
+}
+
+func contentSHA256(content []byte) string {
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])
 }
 
 func Markdown(proposal model.RemediationProposal, sources []model.PackSource) string {

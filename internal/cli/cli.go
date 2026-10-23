@@ -9,10 +9,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/shubham23596/patchrover/internal/agent"
 	"github.com/shubham23596/patchrover/internal/ai"
 	"github.com/shubham23596/patchrover/internal/collect"
 	"github.com/shubham23596/patchrover/internal/demo"
@@ -53,9 +56,90 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return runReceipt(args[1:], stdout, stderr)
 	case "pack":
 		return runPack(args[1:], stdout, stderr)
+	case "agent":
+		return runAgent(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command %q\n\n", args[0])
 		printHelp(stderr)
+		return 1
+	}
+}
+
+func runAgent(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 1 && args[0] == "demo" {
+		if err := agent.Demo(stdout); err != nil {
+			fmt.Fprintln(stderr, "agent demo failed:", err)
+			return 1
+		}
+		return 0
+	}
+	if len(args) == 0 {
+		fmt.Fprintln(stderr, "usage: patchrover agent run|status|approve")
+		return 1
+	}
+	switch args[0] {
+	case "run":
+		set := flag.NewFlagSet("agent run", flag.ContinueOnError)
+		set.SetOutput(stderr)
+		configPath := set.String("config", "", "agent JSON configuration")
+		once := set.Bool("once", false, "run one cycle and exit")
+		if err := set.Parse(args[1:]); err != nil {
+			return 1
+		}
+		if *configPath == "" {
+			fmt.Fprintln(stderr, "agent run requires --config")
+			return 1
+		}
+		config, err := agent.LoadConfig(*configPath)
+		if err != nil {
+			fmt.Fprintln(stderr, "load agent config:", err)
+			return 1
+		}
+		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer cancel()
+		if err := (agent.Runner{Output: stdout}).Run(ctx, config, *once); err != nil {
+			fmt.Fprintln(stderr, "agent run failed:", err)
+			return 1
+		}
+		return 0
+	case "status":
+		set := flag.NewFlagSet("agent status", flag.ContinueOnError)
+		set.SetOutput(stderr)
+		statePath := set.String("state", "", "agent state JSON")
+		if err := set.Parse(args[1:]); err != nil || *statePath == "" {
+			fmt.Fprintln(stderr, "agent status requires --state")
+			return 1
+		}
+		state, err := agent.LoadState(*statePath)
+		if err != nil {
+			fmt.Fprintln(stderr, "load agent state:", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "UPDATED %s\nADVISORIES %d\nTARGETS %d\nACTIONS %d\n", state.UpdatedAt, len(state.Advisories), len(state.Targets), len(state.Actions))
+		for _, target := range state.Targets {
+			fmt.Fprintf(stdout, "TARGET %s verdict=%s trail=%s\n", target.ID, target.Verdict, target.TrailID)
+		}
+		for _, action := range state.Actions {
+			fmt.Fprintf(stdout, "ACTION %s type=%s status=%s target=%s\n", action.ID, action.Type, action.Status, action.TargetID)
+		}
+		return 0
+	case "approve":
+		set := flag.NewFlagSet("agent approve", flag.ContinueOnError)
+		set.SetOutput(stderr)
+		statePath := set.String("state", "", "agent state JSON")
+		actionID := set.String("action", "", "action ID")
+		if err := set.Parse(args[1:]); err != nil || *statePath == "" || *actionID == "" {
+			fmt.Fprintln(stderr, "agent approve requires --state and --action")
+			return 1
+		}
+		if err := agent.Approve(*statePath, *actionID); err != nil {
+			fmt.Fprintln(stderr, "approve action:", err)
+			return 1
+		}
+		fmt.Fprintln(stdout, "APPROVED", *actionID)
+		return 0
+	default:
+		fmt.Fprintln(stderr, "usage: patchrover agent run|status|approve|demo")
 		return 1
 	}
 }
@@ -517,6 +601,10 @@ Usage:
   patchrover verify --pack PACK --trail TRAIL [fresh evidence flags]
   patchrover receipt verify RECEIPT
   patchrover pack validate PACK
+  patchrover agent demo
+  patchrover agent run --config agent.json [--once]
+  patchrover agent status --state state.json
+  patchrover agent approve --state state.json --action ACTION_ID
   patchrover version
 
 Evidence flags:
@@ -527,5 +615,7 @@ Evidence flags:
   --kube-context NAME     explicit read-only kubectl context
   --kube-snapshot FILE    offline Kubernetes PodList JSON
 
-PatchRover never treats missing evidence as safe and never mutates production.`)
+Agent modes are observe, propose, and authorized. Authorized mode only runs exact allowlisted
+GitHub pull-request or Vault machine-credential actions. PatchRover never changes human passwords,
+never treats missing evidence as safe, and never deploys production workloads.`)
 }

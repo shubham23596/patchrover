@@ -1,8 +1,9 @@
-# Create this organization team before the repository becomes public.
-* @patchrover/security-maintainers
+# Personal-account alpha owner. Add a second trusted maintainer before stable release.
+* @shubham23596
 
-/internal/engine/ @patchrover/security-maintainers
-/internal/pack/ @patchrover/security-maintainers
-/internal/receipt/ @patchrover/security-maintainers
-/packs/ @patchrover/security-maintainers
-/.github/workflows/ @patchrover/security-maintainers
+/internal/agent/ @shubham23596
+/internal/engine/ @shubham23596
+/internal/pack/ @shubham23596
+/internal/receipt/ @shubham23596
+/packs/ @shubham23596
+/.github/workflows/ @shubham23596

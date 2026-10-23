@@ -28,12 +28,12 @@ var (
 )
 
 type Options struct {
-	RepositoryPath string
-	SBOMPath       string
-	ImageReference string
-	EvidencePath   string
-	KubeContext    string
-	KubeSnapshot   string
+	RepositoryPath string `json:"repositoryPath,omitempty"`
+	SBOMPath       string `json:"sbomPath,omitempty"`
+	ImageReference string `json:"imageReference,omitempty"`
+	EvidencePath   string `json:"evidencePath,omitempty"`
+	KubeContext    string `json:"kubeContext,omitempty"`
+	KubeSnapshot   string `json:"kubeSnapshot,omitempty"`
 }
 
 func All(options Options) ([]model.EvidenceRef, error) {

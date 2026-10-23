@@ -3,7 +3,7 @@ title: Getting started
 description: Build PatchRover locally and run the safe, account-free demo.
 ---
 
-PatchRover is a local-first incident-response evidence tool. The working alpha is deliberately read-only: it can inspect an authorized repository, SBOM, image reference, or explicit Kubernetes context, but it never pushes a branch or changes a workload.
+PatchRover is a local-first incident-response evidence tool. Collection is read-only. The optional self-hosted agent can open a bounded pull request or rotate an exact allowlisted Vault database credential under policy, but it never merges, deploys, changes workloads, or changes human passwords.
 
 ## Requirements
 
@@ -19,9 +19,12 @@ From a PatchRover checkout:
 
 ```sh
 go run ./cmd/patchrover demo
+go run ./cmd/patchrover agent demo
 ```
 
 The demo creates temporary synthetic source and Kubernetes metadata, validates a signed response pack, produces an affected trail, drafts a local remediation proposal, verifies fixed evidence, and independently checks a signed receipt. Temporary files are removed at the end.
+
+The agent demo separately exercises advisory correlation, deterministic assessment, and the stale-content-protected remediation path without contacting GitHub or Vault.
 
 ## Assess a synthetic fixture
 
