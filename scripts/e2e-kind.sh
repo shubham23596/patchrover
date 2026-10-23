@@ -25,8 +25,31 @@ kind create cluster --name "$cluster_name" --wait 120s
 
 node="$(kind get nodes --name "$cluster_name" | head -n 1)"
 node_image="$(docker inspect --format '{{.Config.Image}}' "$node")"
-docker tag "$node_image" php:8.4.26-apache
-docker tag "$node_image" php:8.4.27-apache
+
+build_synthetic_php_image() {
+  local version="$1"
+  printf '%s\n' \
+    'ARG BASE_IMAGE' \
+    'FROM ${BASE_IMAGE}' \
+    'ARG SYNTHETIC_VERSION' \
+    'LABEL org.patchrover.fixture="safe-synthetic"' \
+    'LABEL org.patchrover.synthetic.php-version="${SYNTHETIC_VERSION}"' | \
+    docker build \
+      --build-arg "BASE_IMAGE=$node_image" \
+      --build-arg "SYNTHETIC_VERSION=$version" \
+      --tag "php:${version}-apache" \
+      -
+}
+
+build_synthetic_php_image "8.4.26"
+build_synthetic_php_image "8.4.27"
+
+affected_image_id="$(docker image inspect --format '{{.Id}}' php:8.4.26-apache)"
+fixed_image_id="$(docker image inspect --format '{{.Id}}' php:8.4.27-apache)"
+if [[ "$affected_image_id" == "$fixed_image_id" ]]; then
+  echo "synthetic affected and fixed OCI fixtures must have distinct image identities" >&2
+  exit 1
+fi
 kind load docker-image --name "$cluster_name" php:8.4.26-apache php:8.4.27-apache
 
 kubectl --context "$context" run patchrover-affected \
