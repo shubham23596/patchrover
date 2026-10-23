@@ -1,0 +1,24 @@
+name: Response-pack proposal
+description: Propose public, post-disclosure response content.
+title: "pack: "
+labels: [response-pack, needs-triage]
+body:
+  - type: input
+    id: advisory
+    attributes:
+      label: Advisory or incident identifier
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Authoritative public HTTPS sources
+    validations:
+      required: true
+  - type: textarea
+    id: rules
+    attributes:
+      label: Deterministic affected and fixed evidence
+      description: Do not include exploit instructions, malware, secrets, or data from a victim environment.
+    validations:
+      required: true

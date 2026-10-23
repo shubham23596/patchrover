@@ -1,0 +1,103 @@
+{
+  "apiVersion": "patchrover.dev/v1alpha1",
+  "kind": "ResponsePack",
+  "metadata": {
+    "id": "litellm-1.107.0-compromise",
+    "version": "0.1.0",
+    "title": "LiteLLM 1.107.0 compromised release",
+    "summary": "Detects the compromised LiteLLM 1.107.0 Python package and the published affected OCI image digests without downloading or executing them.",
+    "author": "PatchRover maintainers",
+    "reviewState": "provisional",
+    "publishedAt": "2026-10-21T20:30:00Z",
+    "expiresAt": "2026-11-21T20:30:00Z"
+  },
+  "spec": {
+    "advisories": [
+      {
+        "id": "INCIDENT-LITELLM-2026-10-21",
+        "severity": "critical"
+      }
+    ],
+    "sources": [
+      {
+        "title": "LiteLLM incident report: release v1.107.0 compromised",
+        "url": "https://docs.litellm.ai/blog/security-incident-oct-21-2026"
+      },
+      {
+        "title": "LiteLLM public incident tracking issue",
+        "url": "https://github.com/BerriAI/litellm/issues/24512"
+      }
+    ],
+    "matchers": [
+      {
+        "id": "litellm-package-or-image",
+        "artifactKinds": [
+          "python-package",
+          "oci-image"
+        ],
+        "name": "litellm",
+        "affectedVersions": [
+          "1.107.0",
+          "v1.107.0",
+          "latest",
+          "main-latest",
+          "main-stable"
+        ],
+        "fixedVersions": [
+          "1.106.2",
+          "v1.106.2"
+        ],
+        "affectedDigests": [
+          "sha256:1bbcb1443bc962e45f5aad53fe3d2c30600e0379715fb6c664cdd3ac126c339e"
+        ],
+        "notes": "Only an affected digest published in full is included. Prefix-only digests are intentionally excluded because they are not exact production indicators; version and tag evidence remains affected."
+      }
+    ],
+    "remediation": {
+      "summary": "Treat every environment that executed the affected package or image as compromised, rebuild from clean inputs, and rotate every reachable credential.",
+      "steps": [
+        "Do not start Python or pip inside an affected environment because the malicious startup files can execute again.",
+        "Quarantine or destroy affected environments and rebuild images or virtual environments from clean inputs.",
+        "Pin LiteLLM to 1.106.2 or another explicitly confirmed safe release after reviewing the latest maintainer guidance.",
+        "Review cloud and identity logs for credential use outside the expected infrastructure."
+      ],
+      "tests": [
+        "Build in a clean isolated environment and run the application test suite.",
+        "Verify the dependency lock and SBOM contain the reviewed safe version.",
+        "Verify no affected image digest or mutable incident-time tag is running."
+      ],
+      "operationalChecks": [
+        "Observe the rebuilt image by immutable digest in every workload.",
+        "Confirm old replicas, jobs, rollback targets, nodes, caches, and registries cannot restart the affected artifact.",
+        "Complete credential rotation and incident review before declaring closure."
+      ],
+      "requiredApprovals": [
+        "Application owner",
+        "Security incident owner",
+        "Cloud identity owner",
+        "Production deployment owner"
+      ],
+      "credentialRotation": [
+        "Instance, task, or workload identity credentials reachable from the affected host.",
+        "AI provider, master, virtual, database, and environment credentials reachable by the affected process.",
+        "Any additional credential identified by the organization's incident-response investigation."
+      ],
+      "compromiseAssumption": "If LiteLLM 1.107.0 or an affected image executed with outbound network access, assume reachable credentials were exfiltrated; absence of a marker file does not prove otherwise."
+    },
+    "verification": {
+      "requireRuntimeEvidence": true,
+      "requirements": [
+        "Observe an explicitly reviewed safe package version in source or the built artifact.",
+        "Observe a new immutable running image digest that does not match an affected digest.",
+        "Do not equate filesystem-indicator absence with absence of compromise.",
+        "Treat mutable tags without an observed immutable digest as unknown during verification."
+      ]
+    }
+  },
+  "signature": {
+    "algorithm": "ed25519",
+    "keyId": "sha256:cb13b1803f8e5cb8021b6af28a0431e2",
+    "publicKey": "0zAgcQXNocbHiGccXn3iRbJc1ITd/HY+3VgsxyzmliY=",
+    "value": "nhJ7FtQ4bCyPp3eCn0E9a5dI8KghFEEGsFxgaIhDMkXY4OKa5ubeQCj156iHxfKeiN5TXrIfaNVk9rnUDbEZAQ=="
+  }
+}

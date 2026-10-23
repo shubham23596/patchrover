@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - name: Check formatting
+        shell: bash
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
+      - name: Test with race detector
+        run: go test -race ./...
+      - name: Validate signed packs
+        shell: bash
+        run: |
+          go run ./cmd/patchrover pack validate packs/php-2026-rce
+          go run ./cmd/patchrover pack validate packs/litellm-1.107.0-compromise
+      - name: Run account-free demo
+        run: go run ./cmd/patchrover demo
+      - name: Confirm affected exit code
+        shell: bash
+        run: |
+          go build -trimpath -o "${RUNNER_TEMP}/patchrover" ./cmd/patchrover
+          set +e
+          "${RUNNER_TEMP}/patchrover" assess \
+            --pack packs/php-2026-rce \
+            --repo packs/php-2026-rce/fixtures/affected \
+            --kube-snapshot packs/php-2026-rce/fixtures/affected/pods.json \
+            --out /tmp/patchrover-ci-trail.json --force
+          status=$?
+          set -e
+          test "$status" -eq 2
+
+  site:
+    name: Astro / Starlight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Install exact dependencies
+        working-directory: site
+        run: npm ci
+      - name: Type-check and build
+        working-directory: site
+        run: npm run build
+      - name: Enforce Lighthouse launch budgets
+        working-directory: site
+        run: npm run lighthouse
+
+  disposable-cluster:
+    name: Disposable OCI + Kubernetes trail
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - name: Install pinned kind
+        env:
+          GOBIN: ${{ runner.temp }}/bin
+        run: |
+          mkdir -p "$GOBIN"
+          go install sigs.k8s.io/kind@v0.33.0
+          echo "$GOBIN" >> "$GITHUB_PATH"
+      - name: Run live read-only collection flow
+        run: scripts/e2e-kind.sh
+
+  dco:
+    name: DCO sign-off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - name: Require Signed-off-by on pull-request commits
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          failed=0
+          while IFS= read -r commit; do
+            if ! git show -s --format=%B "$commit" | grep -qi '^Signed-off-by:'; then
+              echo "Missing Signed-off-by: $commit"
+              failed=1
+            fi
+          done < <(git rev-list "${BASE_SHA}..${HEAD_SHA}")
+          exit "$failed"

@@ -1,0 +1,24 @@
+# Build output
+/bin/
+/dist/
+/coverage.out
+
+# Local PatchRover output
+/patchrover-trail.json
+/patchrover-proposal.md
+/patchrover-receipt.json
+
+# Website dependencies and output
+/site/node_modules/
+/site/dist/
+/site/.astro/
+/site/.lighthouseci/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Local tooling
+/.tools/
+

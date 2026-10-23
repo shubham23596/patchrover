@@ -1,0 +1,19 @@
+---
+interface Props {
+  size?: number;
+  label?: string;
+}
+
+const { size = 42, label = 'PatchRover' } = Astro.props;
+---
+
+<svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={label} class="rover-mark">
+  <rect width="64" height="64" rx="15" fill="#07120f"></rect>
+  <path d="M18 21h27v21H18z" fill="#c8ff66" stroke="#efffe0" stroke-width="2.5"></path>
+  <path d="M23 21v-7m17 7v-7M15 29h-5m5 8h-5m38-8h6m-6 8h6" stroke="#efffe0" stroke-width="3" stroke-linecap="round"></path>
+  <circle cx="26" cy="31" r="3" fill="#07120f"></circle>
+  <circle cx="39" cy="31" r="3" fill="#07120f"></circle>
+  <path d="M27 37h11" stroke="#07120f" stroke-width="2.5" stroke-linecap="round"></path>
+  <circle cx="23" cy="47" r="5" fill="#ff855f" stroke="#07120f" stroke-width="2"></circle>
+  <circle cx="43" cy="47" r="5" fill="#ff855f" stroke="#07120f" stroke-width="2"></circle>
+</svg>

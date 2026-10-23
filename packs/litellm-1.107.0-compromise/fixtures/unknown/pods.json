@@ -1,0 +1,29 @@
+{
+  "apiVersion": "v1",
+  "kind": "PodList",
+  "items": [
+    {
+      "metadata": {
+        "namespace": "synthetic",
+        "name": "litellm-unclassified-version"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "gateway",
+            "image": "ghcr.io/berriai/litellm:v1.107.1"
+          }
+        ]
+      },
+      "status": {
+        "containerStatuses": [
+          {
+            "name": "gateway",
+            "image": "ghcr.io/berriai/litellm:v1.107.1",
+            "imageID": "docker-pullable://ghcr.io/berriai/litellm@sha256:4444444444444444444444444444444444444444444444444444444444444444"
+          }
+        ]
+      }
+    }
+  ]
+}

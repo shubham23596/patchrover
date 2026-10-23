@@ -1,0 +1,22 @@
+{
+  "name": "patchrover-site",
+  "private": true,
+  "version": "0.1.0-alpha.1",
+  "type": "module",
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "check": "ASTRO_TELEMETRY_DISABLED=1 astro check",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro check && ASTRO_TELEMETRY_DISABLED=1 astro build",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "lighthouse": "node scripts/lighthouse.mjs"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.42.6",
+    "astro": "7.4.2"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "lighthouse": "13.5.0",
+    "typescript": "6.0.3"
+  }
+}

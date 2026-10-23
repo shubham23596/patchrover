@@ -1,0 +1,125 @@
+{
+  "apiVersion": "patchrover.dev/v1alpha1",
+  "kind": "ResponsePack",
+  "metadata": {
+    "id": "php-2026-rce",
+    "version": "1.0.0",
+    "title": "PHP 2026 critical remote code execution vulnerabilities",
+    "summary": "Detects supported PHP release lines below the upstream fixes for CVE-2026-109618 and CVE-2026-109619.",
+    "author": "PatchRover maintainers",
+    "reviewState": "verified",
+    "publishedAt": "2026-10-21T14:00:00Z",
+    "expiresAt": "2027-01-21T14:00:00Z"
+  },
+  "spec": {
+    "advisories": [
+      {
+        "id": "CVE-2026-109618",
+        "severity": "critical"
+      },
+      {
+        "id": "CVE-2026-109619",
+        "severity": "critical"
+      }
+    ],
+    "sources": [
+      {
+        "title": "PHP security advisory: critical remote code execution vulnerabilities",
+        "url": "https://www.php.net/archive/2026.php#2026-10-21-1"
+      },
+      {
+        "title": "GHSA-w8hw-w9fx-j79w",
+        "url": "https://github.com/advisories/GHSA-w8hw-w9fx-j79w"
+      },
+      {
+        "title": "GHSA-6wmf-4rv5-p3rp",
+        "url": "https://github.com/advisories/GHSA-6wmf-4rv5-p3rp"
+      }
+    ],
+    "matchers": [
+      {
+        "id": "php-runtime-version",
+        "artifactKinds": [
+          "runtime",
+          "package",
+          "oci-image"
+        ],
+        "name": "php",
+        "affectedVersionRanges": [
+          {
+            "line": "8.2",
+            "lessThan": "8.2.35"
+          },
+          {
+            "line": "8.3",
+            "lessThan": "8.3.36"
+          },
+          {
+            "line": "8.4",
+            "lessThan": "8.4.27"
+          },
+          {
+            "line": "8.5",
+            "lessThan": "8.5.12"
+          }
+        ],
+        "minimumFixedVersions": [
+          {
+            "line": "8.2",
+            "version": "8.2.35"
+          },
+          {
+            "line": "8.3",
+            "version": "8.3.36"
+          },
+          {
+            "line": "8.4",
+            "version": "8.4.27"
+          },
+          {
+            "line": "8.5",
+            "version": "8.5.12"
+          }
+        ],
+        "notes": "PHP 8.1 and older require distribution or LTS-vendor evidence and therefore remain unknown rather than being declared fixed or unaffected."
+      }
+    ],
+    "remediation": {
+      "summary": "Update every web-serving PHP runtime to the fixed release for its supported line or to an explicitly supported vendor backport, then rebuild and redeploy every affected artifact.",
+      "steps": [
+        "Inventory every PHP web runtime, including PHP-FPM, mod_php, php-cgi, FrankenPHP, and LiteSpeed deployments.",
+        "Update to PHP 8.5.12, 8.4.27, 8.3.36, or 8.2.35 as appropriate, or obtain explicit fixed-package evidence from the operating-system or LTS vendor.",
+        "Rebuild images from clean inputs and deploy them through the normal reviewed release process.",
+        "Do not treat the published interim mitigations as complete remediation."
+      ],
+      "tests": [
+        "Run the application's unit, integration, and request-handling regression tests against the updated runtime.",
+        "Confirm extensions, FPM pools, web-server integration, upload limits, sessions, and error handling still behave as intended."
+      ],
+      "operationalChecks": [
+        "Observe the fixed PHP version in the built artifact.",
+        "Observe a new running image digest for every affected workload.",
+        "Confirm that no old replica, worker, cron job, or rollback target still uses the affected runtime."
+      ],
+      "requiredApprovals": [
+        "Application owner",
+        "Security incident owner",
+        "Production deployment owner"
+      ]
+    },
+    "verification": {
+      "requireRuntimeEvidence": true,
+      "requirements": [
+        "Every relevant supported PHP line must meet its minimum fixed version.",
+        "At least one fixed runtime image digest must be observed for a production receipt.",
+        "Unsupported, EOL, vendor-backported, or unversioned runtimes remain unknown without explicit vendor evidence."
+      ]
+    }
+  },
+  "signature": {
+    "algorithm": "ed25519",
+    "keyId": "sha256:cb13b1803f8e5cb8021b6af28a0431e2",
+    "publicKey": "0zAgcQXNocbHiGccXn3iRbJc1ITd/HY+3VgsxyzmliY=",
+    "value": "x0uZjUrrsQQhn3lfTGo/h+WD2t733Eu35Hg8zmYafM3Czrvjk/Cyu6g25ujm30k5J+8O5WA276wcC8vryDRXBg=="
+  }
+}

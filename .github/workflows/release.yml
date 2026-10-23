@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    if: vars.RELEASES_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - name: Verify release source
+        shell: bash
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go test -race ./...
+          go run ./cmd/patchrover pack validate packs/php-2026-rce
+          go run ./cmd/patchrover pack validate packs/litellm-1.107.0-compromise
+      - name: Build release archives
+        shell: bash
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          mkdir -p dist
+          for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            directory="patchrover_${VERSION#v}_${os}_${arch}"
+            mkdir -p "dist/${directory}"
+            GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -trimpath \
+              -ldflags="-s -w -X github.com/shubham23596/patchrover/internal/cli.Version=${VERSION}" \
+              -o "dist/${directory}/patchrover" ./cmd/patchrover
+            cp LICENSE NOTICE README.md "dist/${directory}/"
+            tar -C dist -czf "dist/${directory}.tar.gz" "$directory"
+            rm -rf "dist/${directory}"
+          done
+          (cd dist && sha256sum *.tar.gz > checksums.txt)
+          node scripts/generate-release-sbom.mjs "$VERSION" dist/patchrover.spdx.json dist/*.tar.gz
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661
+        with:
+          subject-path: dist/*
+      - name: Publish immutable release candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes

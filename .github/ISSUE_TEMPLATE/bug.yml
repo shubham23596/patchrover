@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a reproducible PatchRover defect using synthetic data.
+title: "bug: "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, customer data, private infrastructure identifiers, exploits, or malware. Security vulnerabilities belong in private vulnerability reporting.
+  - type: input
+    id: version
+    attributes:
+      label: PatchRover version
+      placeholder: 0.1.0-alpha.1
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [macOS ARM64, macOS x86-64, Linux ARM64, Linux x86-64]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Synthetic reproduction
+      description: Provide the smallest safe sequence and synthetic fixture that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and observed behavior
+    validations:
+      required: true

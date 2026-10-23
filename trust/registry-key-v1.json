@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "keyId": "sha256:cb13b1803f8e5cb8021b6af28a0431e2",
+  "algorithm": "ed25519",
+  "publicKey": "0zAgcQXNocbHiGccXn3iRbJc1ITd/HY+3VgsxyzmliY=",
+  "purpose": "PatchRover response-pack registry signing",
+  "trust": "patchrover-registry-v1",
+  "privateKeyStorage": "Company maintainer macOS Keychain; device-only and available only while unlocked",
+  "rotation": "Publish a signed trust-root update and re-sign active packs before revoking this key."
+}

@@ -1,0 +1,29 @@
+{
+  "apiVersion": "v1",
+  "kind": "PodList",
+  "items": [
+    {
+      "metadata": {
+        "namespace": "synthetic",
+        "name": "php-web-fixed"
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "web",
+            "image": "php:8.4.27-apache"
+          }
+        ]
+      },
+      "status": {
+        "containerStatuses": [
+          {
+            "name": "web",
+            "image": "php:8.4.27-apache",
+            "imageID": "docker-pullable://example.invalid/php@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        ]
+      }
+    }
+  ]
+}

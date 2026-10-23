@@ -1,0 +1,34 @@
+:root {
+  --sl-font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --sl-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --sl-color-accent-low: #263710;
+  --sl-color-accent: #9edb38;
+  --sl-color-accent-high: #dfffb0;
+  --sl-color-white: #f4f1e9;
+  --sl-color-gray-1: #dce5df;
+  --sl-color-gray-2: #a8b5ae;
+  --sl-color-gray-3: #728079;
+  --sl-color-gray-4: #445149;
+  --sl-color-gray-5: #29352f;
+  --sl-color-gray-6: #14201b;
+  --sl-color-black: #07120f;
+}
+
+html[data-theme='light'] {
+  --sl-color-accent-low: #e1f4bf;
+  --sl-color-accent: #437a00;
+  --sl-color-accent-high: #1d3900;
+  --sl-color-white: #07120f;
+  --sl-color-gray-1: #243129;
+  --sl-color-gray-2: #4b5951;
+  --sl-color-gray-3: #718078;
+  --sl-color-gray-4: #abb4af;
+  --sl-color-gray-5: #d5d8d2;
+  --sl-color-gray-6: #e9e7df;
+  --sl-color-gray-7: #f4f1e9;
+  --sl-color-black: #fffcf4;
+}
+
+.site-title { letter-spacing: -.04em; }
+.hero h1 { letter-spacing: -.055em; }
+code { border-radius: 2px; }
