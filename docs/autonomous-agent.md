@@ -7,7 +7,7 @@ It does **not** change employee passwords, browse arbitrary news pages, execute 
 ## Modes
 
 - `observe` records affected targets and suggested actions without making an approval queue.
-- `propose` creates pending actions. An operator approves an exact action ID, and the next run executes it.
+- `propose` creates pending actions. In the open-source workflow, an operator reviews one exact action and explicitly approves its execution. With the commercial integration, the agent submits bounded proposal metadata to the team approval inbox and a customer-hosted runner executes only after approval.
 
 There is no automatic-approval mode. Every write action requires an exact recorded approval.
 
@@ -27,6 +27,23 @@ patchrover agent review --config examples/agent.propose.json --action ACTION_ID
 ```
 
 The review command shows the exact action and asks the operator to type `yes`. Any other answer cancels. Approval is written to the hash-chained audit log before that one action runs. Token values are read from the named environment variables and are never written to configuration or state. Any edit to an existing audit entry causes loading to fail.
+
+## Commercial approval inbox
+
+Commercial customers replace the local `github` and `vault` write integrations with one control-plane connection:
+
+```json
+{
+  "integrations": {
+    "controlPlane": {
+      "url": "https://control.patchrover.example",
+      "tokenEnv": "PATCHROVER_CONTROL_PLANE_TOKEN"
+    }
+  }
+}
+```
+
+The public agent sends only the action type, exact target, Pack ID, Trail ID, affected verdict, and the bounded change metadata needed for approval. It never sends repository contents, GitHub or Vault credentials, Kubernetes Secrets, or human passwords. Accepted actions become `submitted` locally and cannot be executed with the local review command. Repeated submission after a lost response is safe because the action ID is deterministic and the control plane is idempotent.
 
 ## Advisory sources
 
@@ -48,4 +65,4 @@ The only credential action is HashiCorp Vault's database root rotation endpoint 
 
 ## Deployment model
 
-Run the agent inside the customer's own CI or infrastructure. The public website is static on GitHub Pages and never receives repositories, credentials, evidence, or telemetry. A hosted control plane is intentionally deferred.
+Run the agent and commercial remediation runner inside the customer's own CI or infrastructure. The public website is static on GitHub Pages and never receives repositories, credentials, evidence, or telemetry. The optional commercial control plane receives only bounded approval metadata; write credentials remain in the customer-hosted runner.

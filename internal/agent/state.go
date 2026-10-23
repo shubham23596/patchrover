@@ -51,19 +51,21 @@ type TargetResult struct {
 }
 
 type Action struct {
-	ID            string                    `json:"id"`
-	Type          string                    `json:"type"`
-	TargetID      string                    `json:"targetId"`
-	PackID        string                    `json:"packId"`
-	Status        string                    `json:"status"`
-	CreatedAt     string                    `json:"createdAt"`
-	UpdatedAt     string                    `json:"updatedAt"`
-	Repository    string                    `json:"repository,omitempty"`
-	BaseBranch    string                    `json:"baseBranch,omitempty"`
-	Changes       []model.RemediationChange `json:"changes,omitempty"`
-	VaultDatabase string                    `json:"vaultDatabase,omitempty"`
-	ResultURL     string                    `json:"resultUrl,omitempty"`
-	Error         string                    `json:"error,omitempty"`
+	ID                   string                    `json:"id"`
+	Type                 string                    `json:"type"`
+	TargetID             string                    `json:"targetId"`
+	PackID               string                    `json:"packId"`
+	TrailID              string                    `json:"trailId,omitempty"`
+	Status               string                    `json:"status"`
+	CreatedAt            string                    `json:"createdAt"`
+	UpdatedAt            string                    `json:"updatedAt"`
+	Repository           string                    `json:"repository,omitempty"`
+	BaseBranch           string                    `json:"baseBranch,omitempty"`
+	Changes              []model.RemediationChange `json:"changes,omitempty"`
+	VaultDatabase        string                    `json:"vaultDatabase,omitempty"`
+	ResultURL            string                    `json:"resultUrl,omitempty"`
+	ControlPlaneActionID string                    `json:"controlPlaneActionId,omitempty"`
+	Error                string                    `json:"error,omitempty"`
 }
 
 type AuditEntry struct {

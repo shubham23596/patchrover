@@ -19,6 +19,7 @@
 ## Commercial control plane
 
 - Private packs, continuous monitoring, an approval inbox, approved fix application, fleet inventory, drift alerts, history, SSO/RBAC, audit retention, and workflow integrations.
+- The bounded open-source-agent submission bridge, team approval API, and customer-hosted GitHub/Vault runner are implemented; hosted staging and production-readiness gates remain open.
 - The open-source CLI, public pack format, public post-disclosure packs, and receipt verifier remain public.
 
 Commercial milestones are measured by repeat incident use and paid pilots, not GitHub stars alone. See [GOVERNANCE.md](GOVERNANCE.md) for project decision-making.

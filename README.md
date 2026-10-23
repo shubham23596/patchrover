@@ -31,6 +31,8 @@ patchrover agent status --state <state.json>
 patchrover agent review --config <agent.json> --action <action-id>
 ```
 
+Commercial organizations can configure the same agent to submit bounded proposals to the private team approval inbox. Repository contents and GitHub/Vault credentials remain inside the customer's environment; only an approved action can be leased by the customer-hosted runner.
+
 `assess` exits with code `2` for `affected`, `3` for `unknown`, and `0` for a fixed or explicitly not-affected result. This makes it safe to use as a CI gate without confusing uncertainty with safety.
 
 ## Quick assessment

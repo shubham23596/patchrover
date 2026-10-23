@@ -18,6 +18,7 @@ PatchRover uses an open-core model with a bright line: detection, evidence, publ
 
 - Continuous monitoring across repositories, images, and clusters.
 - A team approval inbox that shows the exact proposed fix and applies only the approved action.
+- A bounded bridge from the open-source agent to that inbox; repository contents and write credentials stay in the customer's environment.
 - Private Packs and an organization-wide impact map.
 - SSO, role-based access, immutable audit history, drift alerts, and governance policies.
 - Enterprise integrations, onboarding, support, and SLAs.
