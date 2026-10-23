@@ -124,6 +124,129 @@ func TestResolveImageReferenceUsesScopedBearerChallengeAndVerifiesDigest(t *test
 	}
 }
 
+func TestResolveImageReferenceSelectsAndVerifiesPlatformManifest(t *testing.T) {
+	armManifest := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","size":2},"layers":[]}`)
+	amdManifest := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","size":2},"layers":[]}`)
+	armSum := sha256.Sum256(armManifest)
+	amdSum := sha256.Sum256(amdManifest)
+	armDigest := "sha256:" + hex.EncodeToString(armSum[:])
+	amdDigest := "sha256:" + hex.EncodeToString(amdSum[:])
+	index, err := json.Marshal(map[string]any{
+		"schemaVersion": 2,
+		"mediaType":     "application/vnd.oci.image.index.v1+json",
+		"manifests": []any{
+			map[string]any{"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": amdDigest, "size": len(amdManifest), "platform": map[string]any{"os": "linux", "architecture": "amd64"}},
+			map[string]any{"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": armDigest, "size": len(armManifest), "platform": map[string]any{"os": "linux", "architecture": "arm64", "variant": "v8"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexSum := sha256.Sum256(index)
+	indexDigest := "sha256:" + hex.EncodeToString(indexSum[:])
+	requests := 0
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requests++
+		switch request.URL.Path {
+		case "/v2/org/app/manifests/2.0":
+			writer.Header().Set("Content-Type", "application/vnd.oci.image.index.v1+json")
+			writer.Header().Set("Docker-Content-Digest", indexDigest)
+			_, _ = writer.Write(index)
+		case "/v2/org/app/manifests/" + armDigest:
+			writer.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+			writer.Header().Set("Docker-Content-Digest", armDigest)
+			_, _ = writer.Write(armManifest)
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "https://")
+	item, err := ResolveImageReference(context.Background(), host+"/org/app:2.0", "image-under-test", true, RegistryOptions{AllowedHosts: []string{host}, Platform: "linux/arm64/v8", HTTP: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.Digest != armDigest || item.IndexDigest != indexDigest || item.Platform != "linux/arm64/v8" || !item.Runtime {
+		t.Fatalf("unexpected platform evidence: %#v", item)
+	}
+	if requests != 2 {
+		t.Fatalf("platform selection made %d registry requests, want index plus one child", requests)
+	}
+}
+
+func TestResolveImageReferenceRejectsAmbiguousOrUnverifiedPlatform(t *testing.T) {
+	manifest := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`)
+	manifestSum := sha256.Sum256(manifest)
+	manifestDigest := "sha256:" + hex.EncodeToString(manifestSum[:])
+	index, err := json.Marshal(map[string]any{
+		"schemaVersion": 2,
+		"mediaType":     "application/vnd.oci.image.index.v1+json",
+		"manifests": []any{
+			map[string]any{"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": manifestDigest, "size": len(manifest), "platform": map[string]any{"os": "linux", "architecture": "arm64", "variant": "v8"}},
+			map[string]any{"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": "sha256:" + strings.Repeat("b", 64), "size": len(manifest), "platform": map[string]any{"os": "linux", "architecture": "arm64", "variant": "v9"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexSum := sha256.Sum256(index)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/vnd.oci.image.index.v1+json")
+		writer.Header().Set("Docker-Content-Digest", "sha256:"+hex.EncodeToString(indexSum[:]))
+		_, _ = writer.Write(index)
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "https://")
+	_, err = ResolveImageReference(context.Background(), host+"/org/app:2.0", "image", false, RegistryOptions{AllowedHosts: []string{host}, Platform: "linux/arm64", HTTP: server.Client()})
+	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("ambiguous platform selection returned %v", err)
+	}
+
+	directManifestServer := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+		writer.Header().Set("Docker-Content-Digest", manifestDigest)
+		_, _ = writer.Write(manifest)
+	}))
+	defer directManifestServer.Close()
+	directHost := strings.TrimPrefix(directManifestServer.URL, "https://")
+	_, err = ResolveImageReference(context.Background(), directHost+"/org/app:2.0", "image", false, RegistryOptions{AllowedHosts: []string{directHost}, Platform: "linux/arm64/v8", HTTP: directManifestServer.Client()})
+	if err == nil || !strings.Contains(err.Error(), "cannot be proven") {
+		t.Fatalf("unverifiable direct manifest platform returned %v", err)
+	}
+}
+
+func TestResolveImageReferenceRejectsPlatformDescriptorBodyMismatch(t *testing.T) {
+	manifest := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json"}`)
+	declaredDigest := "sha256:" + strings.Repeat("a", 64)
+	index, err := json.Marshal(map[string]any{
+		"schemaVersion": 2,
+		"mediaType":     "application/vnd.oci.image.index.v1+json",
+		"manifests": []any{
+			map[string]any{"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": declaredDigest, "size": len(manifest), "platform": map[string]any{"os": "linux", "architecture": "amd64"}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexSum := sha256.Sum256(index)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if strings.HasSuffix(request.URL.Path, "/1.0") {
+			writer.Header().Set("Content-Type", "application/vnd.oci.image.index.v1+json")
+			writer.Header().Set("Docker-Content-Digest", "sha256:"+hex.EncodeToString(indexSum[:]))
+			_, _ = writer.Write(index)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/vnd.oci.image.manifest.v1+json")
+		_, _ = writer.Write(manifest)
+	}))
+	defer server.Close()
+	host := strings.TrimPrefix(server.URL, "https://")
+	_, err = ResolveImageReference(context.Background(), host+"/org/app:1.0", "image", false, RegistryOptions{AllowedHosts: []string{host}, Platform: "linux/amd64", HTTP: server.Client()})
+	if err == nil || !strings.Contains(err.Error(), "descriptor digest") {
+		t.Fatalf("descriptor body mismatch returned %v", err)
+	}
+}
+
 func TestResolveImageReferenceRejectsUnallowlistedNetworkAndDigestMismatch(t *testing.T) {
 	requests := 0
 	manifest := []byte(`{"schemaVersion":2}`)
@@ -226,6 +349,16 @@ func TestAllRequiresResolutionForRegistrySettings(t *testing.T) {
 	_, err = All(Options{RepositoryPath: t.TempDir(), ResolveImage: true})
 	if err == nil || !strings.Contains(err.Error(), "requires an explicit image") {
 		t.Fatalf("resolution without an image returned %v", err)
+	}
+	_, err = All(Options{ImageReference: "ghcr.io/acme/app:latest", ImagePlatform: "linux/amd64"})
+	if err == nil || !strings.Contains(err.Error(), "platform selection requires") {
+		t.Fatalf("platform selection without resolution returned %v", err)
+	}
+	if err := ValidateRegistryResolution("ghcr.io/acme/app:latest", RegistryOptions{AllowedHosts: []string{"ghcr.io"}, Platform: "windows/amd64"}); err == nil || !strings.Contains(err.Error(), "Linux") {
+		t.Fatalf("unsupported operating system returned %v", err)
+	}
+	if err := ValidateRegistryResolution("ghcr.io/acme/app@sha256:"+strings.Repeat("a", 64), RegistryOptions{Platform: "linux/amd64"}); err == nil || !strings.Contains(err.Error(), "tagged reference") {
+		t.Fatalf("platform selection for pinned digest returned %v", err)
 	}
 }
 

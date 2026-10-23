@@ -49,12 +49,18 @@ func TestConfigRequiresExplicitRegistryHostForLiveImageResolution(t *testing.T) 
 		t.Fatalf("missing registry allowlist returned %v", err)
 	}
 	config.Targets[0].Evidence.RegistryAllowedHosts = []string{"ghcr.io"}
+	config.Targets[0].Evidence.ImagePlatform = "linux/arm64/v8"
 	if err := config.Validate(); err != nil {
-		t.Fatalf("explicit registry allowlist was rejected: %v", err)
+		t.Fatalf("explicit registry allowlist and platform were rejected: %v", err)
 	}
 	config.Targets[0].Evidence.RegistryTokenEnv = "invalid-name"
 	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "registryTokenEnv") {
 		t.Fatalf("invalid registry token environment name returned %v", err)
+	}
+	config.Targets[0].Evidence.RegistryTokenEnv = ""
+	config.Targets[0].Evidence.ResolveImage = false
+	if err := config.Validate(); err == nil || !strings.Contains(err.Error(), "registry settings require") {
+		t.Fatalf("platform without live resolution returned %v", err)
 	}
 }
 

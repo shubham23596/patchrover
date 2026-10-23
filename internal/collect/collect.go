@@ -33,6 +33,7 @@ type Options struct {
 	SBOMPath             string   `json:"sbomPath,omitempty"`
 	ImageReference       string   `json:"imageReference,omitempty"`
 	ResolveImage         bool     `json:"resolveImage,omitempty"`
+	ImagePlatform        string   `json:"imagePlatform,omitempty"`
 	RegistryAllowedHosts []string `json:"registryAllowedHosts,omitempty"`
 	RegistryTokenEnv     string   `json:"registryTokenEnv,omitempty"`
 	EvidencePath         string   `json:"evidencePath,omitempty"`
@@ -50,6 +51,9 @@ func AllContext(ctx context.Context, options Options) ([]model.EvidenceRef, erro
 	}
 	if !options.ResolveImage && (len(options.RegistryAllowedHosts) > 0 || options.RegistryTokenEnv != "") {
 		return nil, errors.New("registry settings require live image resolution")
+	}
+	if !options.ResolveImage && options.ImagePlatform != "" {
+		return nil, errors.New("image platform selection requires live image resolution")
 	}
 	var evidence []model.EvidenceRef
 	if options.RepositoryPath != "" {
@@ -70,7 +74,7 @@ func AllContext(ctx context.Context, options Options) ([]model.EvidenceRef, erro
 		var item model.EvidenceRef
 		var err error
 		if options.ResolveImage {
-			item, err = ResolveImageReference(ctx, options.ImageReference, "cli-image", false, RegistryOptions{AllowedHosts: options.RegistryAllowedHosts, TokenEnv: options.RegistryTokenEnv})
+			item, err = ResolveImageReference(ctx, options.ImageReference, "cli-image", false, RegistryOptions{AllowedHosts: options.RegistryAllowedHosts, TokenEnv: options.RegistryTokenEnv, Platform: options.ImagePlatform})
 		} else {
 			item, err = ImageReference(options.ImageReference, "cli-image", false)
 		}

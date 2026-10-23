@@ -32,7 +32,7 @@
 | Self-signed receipt mistaken for trusted identity | Verifier reports integrity and identity trust separately; locally signed receipts are explicitly untrusted-self-signed. |
 | Compromised GitHub workflow | Minimal permissions, pinned action SHAs, Dependabot, CodeQL, repository-enforced protected releases, and signed provenance. |
 | Advisory feed injects instructions | HTTPS and exact-host allowlists, size limits, structured parsers, no execution, and no verdict without a signed Response Pack. |
-| Image tag resolution is used for SSRF or credential theft | Resolution is opt-in, registry and token-service hosts require exact HTTPS allowlisting, redirects cannot change hosts, tokens come only from a named environment variable or an exact repository pull-scope challenge, responses are size-limited, and the manifest body must match its advertised digest. |
+| Image tag resolution is used for SSRF or credential theft | Resolution is opt-in, registry and token-service hosts require exact HTTPS allowlisting, redirects cannot change hosts, tokens come only from a named environment variable or an exact repository pull-scope challenge, responses are size-limited, and every fetched index or manifest body must match its advertised digest. Platform selection requires one unambiguous descriptor whose digest, size, media type, and child body all agree. |
 | Agent overwrites a developer change | The remote file must match the SHA-256 observed during assessment; replacements are line-specific and fail closed. |
 | Stolen integration token broadens access | Tokens stay in environment variables; operators must use provider-side least privilege; no token is persisted to state. |
 | Approval or audit record is altered | State uses strict decoding and a hash-chained audit log; existing-entry tampering prevents the agent from loading. |
@@ -41,7 +41,7 @@
 ## Residual risks
 
 - Dependency files, image tags, and SBOMs may be stale or incomplete.
-- An unresolved OCI tag is mutable and is not equivalent to a digest. Opt-in registry resolution proves the manifest observed at that moment; it does not make the tag immutable or select a platform child from a multi-platform index.
+- An unresolved OCI tag is mutable and is not equivalent to a digest. Opt-in registry resolution proves the manifest observed at that moment. For multi-platform images, operators must provide an explicit Linux platform to prove the selected child; resolution does not make the original tag immutable.
 - Kubernetes pod metadata proves an observed image identity, not absence of compromise.
 - A fixed version does not prove that unrelated vulnerabilities or persistence are absent.
 - The v1 response-pack signing seed is device-bound in one company maintainer's macOS Keychain. Independent custody, recovery, rotation rehearsal, and external audit are not yet complete.

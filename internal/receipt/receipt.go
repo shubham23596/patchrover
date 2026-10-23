@@ -230,12 +230,14 @@ func redactEvidence(evidence []model.EvidenceRef, salt string) []model.ReceiptEv
 		tokenSource := salt + "\x00" + item.AssetID + "\x00" + item.Location + "\x00" + item.Source
 		tokenHash := sha256.Sum256([]byte(tokenSource))
 		result = append(result, model.ReceiptEvidence{
-			Kind:       item.Kind,
-			Name:       item.Name,
-			Version:    item.Version,
-			Digest:     item.Digest,
-			AssetToken: "asset-" + hex.EncodeToString(tokenHash[:8]),
-			Runtime:    item.Runtime,
+			Kind:        item.Kind,
+			Name:        item.Name,
+			Version:     item.Version,
+			Digest:      item.Digest,
+			Platform:    item.Platform,
+			IndexDigest: item.IndexDigest,
+			AssetToken:  "asset-" + hex.EncodeToString(tokenHash[:8]),
+			Runtime:     item.Runtime,
 		})
 	}
 	sort.Slice(result, func(i, j int) bool {

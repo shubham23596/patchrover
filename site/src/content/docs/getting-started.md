@@ -39,11 +39,12 @@ bin/patchrover assess \
   --pack packs/litellm-1.107.0-compromise \
   --image ghcr.io/berriai/litellm:main-latest \
   --resolve-image \
+  --image-platform linux/amd64 \
   --registry-host ghcr.io \
   --out patchrover-trail.json
 ```
 
-Resolution is disabled unless requested. For registries with a separate public token service, repeat `--registry-host` for that exact host. Private-registry tokens are read from a named environment variable with `--registry-token-env`; their values are never stored.
+Resolution is disabled unless requested. `--image-platform` selects the verified child digest that actually runs on that Linux platform; ambiguous or missing matches fail closed. For registries with a separate public token service, repeat `--registry-host` for that exact host. Private-registry tokens are read from a named environment variable with `--registry-token-env`; their values are never stored.
 
 ## Send a fix for team approval
 

@@ -53,7 +53,7 @@ bin/patchrover propose \
 Optional inputs:
 
 - `--sbom`: CycloneDX JSON or SPDX JSON.
-- `--image`: an OCI image reference. A supplied digest is evaluated offline. Add `--resolve-image` and repeat `--registry-host` for each exact registry or token-service HTTPS host to resolve a tag to a verified manifest digest. Private registries may use `--registry-token-env` to name an environment variable containing a read-only bearer token.
+- `--image`: an OCI image reference. A supplied digest is evaluated offline. Add `--resolve-image` and repeat `--registry-host` for each exact registry or token-service HTTPS host to resolve a tag to a verified manifest digest. Add `--image-platform linux/amd64` (or `linux/arm64/v8`) to select and verify one unambiguous child manifest from a multi-platform index. Private registries may use `--registry-token-env` to name an environment variable containing a read-only bearer token.
 - `--evidence`: an explicit PatchRover evidence JSON document.
 - `--kube-context`: invokes only `kubectl --context CONTEXT get pods --all-namespaces -o json`; no exec, patch, apply, or secret API is used.
 - `--kube-snapshot`: an offline pod-list JSON fixture or approved export.
@@ -110,7 +110,7 @@ patchrover receipt verify \
 
 ## Project status
 
-PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, opt-in live OCI manifest resolution, local proposals, commercial approval submission, persistent advisory-source health, tamper-evident agent state, exact-policy Sigstore receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, an organization signing workflow, platform-specific OCI index selection, external security review, and production design-partner evidence remain required before a production-readiness claim.
+PatchRover is a pre-1.0 security product, not a security guarantee. Deterministic assessment, signed packs, evidence collection, opt-in live OCI manifest and platform-child resolution, local proposals, commercial approval submission, persistent advisory-source health, tamper-evident agent state, exact-policy Sigstore receipt verification, CI, and the static website are implemented. The private commercial runner implements approval-controlled pull requests and typed Vault database credential rotation. Multi-maintainer key custody, an organization signing workflow, registry-attached SBOM discovery, external security review, and production design-partner evidence remain required before a production-readiness claim.
 
 GitHub Pages deploys automatically from `main`. Binary releases remain disabled until the release controls in the launch checklist are complete. The project home is `github.com/shubham23596/patchrover`, with its website served by GitHub Pages at `shubham23596.github.io/patchrover/`.
 

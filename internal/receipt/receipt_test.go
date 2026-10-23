@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -27,7 +28,7 @@ func TestReceiptIntegrityRedactionAndTamperDetection(t *testing.T) {
 	trail := model.Trail{
 		ID: "trail-test", PackID: "test-pack", PackVersion: "1", PackDigest: "sha256:pack", Verdict: model.VerdictFixed,
 		Evidence: []model.EvidenceRef{{
-			ID: "ev-1", AssetID: "secret-cluster/secret-namespace/secret-pod", Source: "secret-source", Location: "secret-repo/path", Kind: "oci-image", Name: "app", Version: "1.2.3", Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Runtime: true,
+			ID: "ev-1", AssetID: "secret-cluster/secret-namespace/secret-pod", Source: "secret-source", Location: "secret-repo/path", Kind: "oci-image", Name: "app", Version: "1.2.3", Digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Platform: "linux/arm64/v8", IndexDigest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", Runtime: true,
 		}},
 		Findings: []model.Finding{{EvidenceID: "ev-1", Status: model.VerdictFixed, Runtime: true}},
 	}
@@ -47,6 +48,13 @@ func TestReceiptIntegrityRedactionAndTamperDetection(t *testing.T) {
 		if strings.Contains(string(payload), secret) {
 			t.Fatalf("receipt leaked internal identifier %q", secret)
 		}
+	}
+	var statement model.InTotoStatement
+	if err := json.Unmarshal(payload, &statement); err != nil {
+		t.Fatal(err)
+	}
+	if len(statement.Predicate.Evidence) != 1 || statement.Predicate.Evidence[0].Platform != "linux/arm64/v8" || statement.Predicate.Evidence[0].IndexDigest == "" {
+		t.Fatalf("receipt lost OCI platform provenance: %#v", statement.Predicate.Evidence)
 	}
 	bundle.DSSEEnvelope.Payload = base64.StdEncoding.EncodeToString(append(payload, byte(' ')))
 	if _, err := Verify(bundle); err == nil {

@@ -116,19 +116,21 @@ func (p ResponsePack) Digest() (string, error) {
 }
 
 type EvidenceRef struct {
-	ID         string `json:"id"`
-	Source     string `json:"source"`
-	ObservedAt string `json:"observedAt"`
-	AssetID    string `json:"assetId"`
-	Collector  string `json:"collector"`
-	Kind       string `json:"kind"`
-	Name       string `json:"name"`
-	Version    string `json:"version,omitempty"`
-	Digest     string `json:"digest,omitempty"`
-	Location   string `json:"location,omitempty"`
-	Runtime    bool   `json:"runtime"`
-	Confidence string `json:"confidence"`
-	Detail     string `json:"detail"`
+	ID          string `json:"id"`
+	Source      string `json:"source"`
+	ObservedAt  string `json:"observedAt"`
+	AssetID     string `json:"assetId"`
+	Collector   string `json:"collector"`
+	Kind        string `json:"kind"`
+	Name        string `json:"name"`
+	Version     string `json:"version,omitempty"`
+	Digest      string `json:"digest,omitempty"`
+	Platform    string `json:"platform,omitempty"`
+	IndexDigest string `json:"indexDigest,omitempty"`
+	Location    string `json:"location,omitempty"`
+	Runtime     bool   `json:"runtime"`
+	Confidence  string `json:"confidence"`
+	Detail      string `json:"detail"`
 }
 
 type Finding struct {
@@ -210,12 +212,14 @@ type ReceiptPredicate struct {
 }
 
 type ReceiptEvidence struct {
-	Kind       string `json:"kind"`
-	Name       string `json:"name"`
-	Version    string `json:"version,omitempty"`
-	Digest     string `json:"digest,omitempty"`
-	AssetToken string `json:"assetToken"`
-	Runtime    bool   `json:"runtime"`
+	Kind        string `json:"kind"`
+	Name        string `json:"name"`
+	Version     string `json:"version,omitempty"`
+	Digest      string `json:"digest,omitempty"`
+	Platform    string `json:"platform,omitempty"`
+	IndexDigest string `json:"indexDigest,omitempty"`
+	AssetToken  string `json:"assetToken"`
+	Runtime     bool   `json:"runtime"`
 }
 
 type OpenVEXDocument struct {
