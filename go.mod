@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/sigstore/sigstore-go v1.2.1
-	github.com/theupdateframework/go-tuf/v2 v2.4.2-0.20260407074541-7e8f69f906ef
+	github.com/theupdateframework/go-tuf/v2 v2.4.2
 )
 
 require (
